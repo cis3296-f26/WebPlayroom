@@ -75,3 +75,23 @@
   margin: 2rem;
   text-align: center;
 }
+
+.buckshot-roulette-game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  margin: 2rem;
+  text-align: center;
+}
+
+.country-quest-game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  margin: 2rem;
+  text-align: center;
+}
