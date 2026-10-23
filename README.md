@@ -1,16 +1,41 @@
-# React + Vite
+# WebPlayroom
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Project Description
 
-Currently, two official plugins are available:
+WebPlayroom is a browser-based mini-game hub built with React. The home page links to Snake, 8-Ball Pool, Connect 4, Buckshot Roulette Lite Plus, and Country Quest. Country Quest currently has a difficulty selector; gameplay for the five games is still in development.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Installation
 
-## React Compiler
+Install Node.js 24.15 or later on the 24.x line and npm, then clone the repository and install its dependencies:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```sh
+git clone https://github.com/cis3296-f26/WebPlayroom.git
+cd WebPlayroom
+npm ci --include=optional
+```
 
-## Expanding the ESLint configuration
+## Build
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Create the production build:
+
+```sh
+npm run build
+```
+
+The built site is placed in `dist/`.
+
+## Run
+
+To start the development server:
+
+```sh
+npm run dev
+```
+
+To run the production build locally after building it:
+
+```sh
+npm run preview
+```
+
+Open the URL printed in the terminal. Select a game on the home page to open its page, and select the WebPlayroom title to return home.
