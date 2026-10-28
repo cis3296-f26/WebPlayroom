@@ -1,4 +1,4 @@
-import { BALL_RADIUS } from "../constants";
+import { BALL_RADIUS, TABLE_WIDTH, TABLE_HEIGHT } from "../constants";
 
 export function drawBall (x, y, color, ctx) {
     ctx.beginPath();
@@ -9,4 +9,8 @@ export function drawBall (x, y, color, ctx) {
     ctx.stroke();
 }
 
-//export function 
+export function drawFrame(ctx, balls) {
+    ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
+    for(const ball of balls) 
+        drawBall(ball.x, ball.y, ball.color, ctx);
+}
