@@ -54,17 +54,6 @@
   text-align: center;
 }
 
-/*Style for pool game container */
-.pool-game-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  margin: 2rem;
-  text-align: center;
-}
-
 /*Style for connect4 game container */
 .connect4-game-container {
   display: flex;
