@@ -54,6 +54,18 @@
   text-align: center;
 }
 
+.snake-board {
+  line-height: 0;
+}
+
+.snake-board canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(60vh - 6rem);
+}
+
 /*Style for pool game container */
 .pool-game-container {
   display: flex;
