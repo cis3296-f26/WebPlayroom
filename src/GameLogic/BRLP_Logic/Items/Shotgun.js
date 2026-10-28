@@ -1,4 +1,4 @@
-import { RoundNum } from '../BRLP_Logic/buckshotLogic.js';
+import { Logic } from '../BRLP_Logic/buckshotLogic.js';
 
 export class Shotgun {
     chamber = [];
@@ -9,7 +9,7 @@ export class Shotgun {
 
     initializeBullets() {
         minShells = 1; maxShells = 10;
-        switch (RoundNum) {
+        switch (Logic.roundNumber) {
             case 1:
                 minShells = 2; maxShells = 4;
                 break;
