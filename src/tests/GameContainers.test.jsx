@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import Snake from '../game_containers/Snake.jsx'
 import Pool from '../game_containers/Pool.jsx'
 import Connect4 from '../game_containers/Connect4.jsx'
-import BuckshotRouletteLitePlus from '../game_containers/BuckshotRouletteLitePlus.jsx'
+import BuckshotRouletteLitePlus from '../game_containers/BuckshotContainer.jsx'
 
 const CONTAINERS = [
   { Component: Snake, title: 'Snake', className: 'snake-game-container' },
