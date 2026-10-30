@@ -77,15 +77,149 @@
   text-align: center;
 }
 
-/*Style for connect4 game container */
+/* Connect 4 MVP */
 .connect4-game-container {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 60vh;
-  margin: 2rem;
+  gap: 0.75rem;
+  max-width: 880px;
+  min-height: 60vh;
+  margin: 2rem auto;
+  padding: 2rem 1rem;
+  border-radius: 16px;
+  background: #eef4ff;
+  color: #173154;
   text-align: center;
+}
+
+.connect4-game-container h3 {
+  margin: 0;
+}
+
+.connect4-game-container h3 {
+  font-size: 2rem;
+}
+
+.connect4-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  font-weight: 700;
+}
+
+.connect4-players > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.connect4-token {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  font-size: 0.85rem;
+}
+
+.connect4-board {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(3px, 1vw, 9px);
+  width: min(100%, 560px);
+  padding: clamp(6px, 1.5vw, 12px);
+  border-radius: 16px;
+  background: #1556bd;
+  box-shadow: 0 8px 0 #0d3880, 0 16px 24px #17315433;
+}
+
+.connect4-column {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 1vw, 9px);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.connect4-column:disabled {
+  cursor: default;
+}
+
+.connect4-column:focus-visible {
+  outline: 3px solid #ffdc5c;
+  outline-offset: 2px;
+}
+
+.connect4-column-label {
+  color: white;
+  font-weight: 800;
+}
+
+.connect4-cell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #e9eff8;
+  box-shadow: inset 0 3px 5px #092c6a55;
+  font-size: clamp(0.75rem, 3vw, 1.25rem);
+  font-weight: 800;
+}
+
+.connect4-column:not(:disabled):hover .connect4-cell.empty {
+  background: white;
+}
+
+.connect4-cell.red,
+.connect4-token.red {
+  background: #d92943;
+  color: white;
+}
+
+.connect4-cell.yellow,
+.connect4-token.yellow {
+  background: #ffdc5c;
+  color: #473500;
+}
+
+.connect4-reset {
+  margin-top: 1rem;
+  padding: 0.7rem 1.4rem;
+  border: 0;
+  border-radius: 8px;
+  background: #173154;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.connect4-reset:hover {
+  background: #254d80;
+}
+
+.connect4-reset:focus-visible {
+  outline: 3px solid #1556bd;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .connect4-game-container {
+    margin: 1rem;
+    padding: 1.25rem 0.75rem;
+  }
+
+  .connect4-players {
+    gap: 0.75rem;
+  }
 }
 
 .buckshot-roulette-game-container {
