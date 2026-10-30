@@ -2,7 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom'
 
 import GameHub from './GameHub.jsx'
 import Snake from './game_containers/Snake.jsx'
-import Pool from './game_containers/Pool.jsx'
+import Pool from './game_containers/Pool/Pool.jsx'
 import Connect4 from './game_containers/Connect4.jsx'
 import BuckshotRouletteLitePlus from './game_containers/BuckshotContainer.jsx'
 import CountryQuest from './game_containers/CountryQuest.jsx'
