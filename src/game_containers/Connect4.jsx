@@ -53,6 +53,7 @@ const Connect4 = () => {
                 <span
                   key={rowIndex}
                   className={'connect4-cell ' + (row[column] || 'empty')}
+                  style={{ '--drop-start': '-' + (rowIndex + 1) * 115 + '%' }}
                   data-testid={'connect4-cell-' + rowIndex + '-' + column}
                   aria-hidden="true"
                 />

@@ -178,13 +178,35 @@
   background: white;
 }
 
-.connect4-cell.red,
+.connect4-cell.red::after,
+.connect4-cell.yellow::after {
+  content: '';
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: connect4-drop 450ms ease-out both;
+}
+
+@keyframes connect4-drop {
+  0% { transform: translateY(var(--drop-start)); }
+  80% { transform: translateY(6%); }
+  100% { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connect4-cell.red::after,
+  .connect4-cell.yellow::after {
+    animation: none;
+  }
+}
+
+.connect4-cell.red::after,
 .connect4-token.red {
   background: #d92943;
   color: white;
 }
 
-.connect4-cell.yellow,
+.connect4-cell.yellow::after,
 .connect4-token.yellow {
   background: #ffdc5c;
   color: #473500;
