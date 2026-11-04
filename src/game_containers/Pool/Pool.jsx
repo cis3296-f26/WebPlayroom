@@ -1,18 +1,17 @@
 import { useRef, useEffect } from 'react'
 import './Pool.css'
 import { drawFrame } from './logic/render'
-import { moveBall } from './logic/physics'
+import { applyInput, updateBall, handleCollisions } from './logic/physics'
 import { setupKeyboard } from './logic/input'
-import Ball from './logic/Ball';
+//import Ball from './logic/Ball';
+import { createStartingLineup } from './logic/startingLineup'
 import {
-  BALL_START_X,
-  BALL_START_Y,
   TABLE_WIDTH,
   TABLE_HEIGHT
 } from './constants'
 
 const Pool = () => {
-  const canvasRef = useRef(null)
+  const canvasRef = useRef(null) 
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -20,15 +19,16 @@ const Pool = () => {
     const ctx = canvasRef.current.getContext('2d')
     canvas.focus()
 
-    const ball = new Ball(BALL_START_X, BALL_START_Y, 'white');
-    const ball2 = new Ball(150, 150, 'blue');
     const { keys, cleanup } = setupKeyboard(canvas);
 
-    const balls = [ball, ball2]
+    const balls = createStartingLineup();
+    const cueBall = balls[0];
 
     let frameId
     const loop = () => {
-      moveBall(ball, keys)
+      applyInput(cueBall, keys)              // only the white ball is player-controlled
+      for (const b of balls) updateBall(b) // every ball gets friction + movement
+      handleCollisions(balls)
       drawFrame(ctx, balls)
       frameId = requestAnimationFrame(loop)
     }
