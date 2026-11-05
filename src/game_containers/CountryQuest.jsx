@@ -7,6 +7,20 @@ const DIFFICULTY = {
   hard:   { label: 'Hard',   hint: false, time: 20, note: '20 seconds per question' },
 }
 
+// time ~ score feature
+const MAX_POINTS = 10
+const STREAK_BONUS = 2
+const PERFECT_BONUS = 10
+
+const maxScore = (questions) =>
+  questions * MAX_POINTS + (questions - 1) * STREAK_BONUS + PERFECT_BONUS
+
+const pointsFor = (level, timeLeft) => {
+  const limit = DIFFICULTY[level].time
+  if (!limit) return MAX_POINTS 
+  return Math.max(1, Math.ceil((MAX_POINTS * timeLeft) / limit))
+}
+
 const TIMEOUT = '__timeout__'
 
 const pageStyle = {
@@ -44,6 +58,11 @@ function CountryQuest() {
   const [picked, setPicked] = useState(null)
   const [timeLeft, setTimeLeft] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [lastPoints, setLastPoints] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [streakTotal, setStreakTotal] = useState(0)
+  const [correctCount, setCorrectCount] = useState(0)
+  const [lastBonus, setLastBonus] = useState(0)
 
   const start = (level) => {
     setDifficulty(level)
@@ -54,6 +73,10 @@ function CountryQuest() {
     setPicked(null)
     setTimeLeft(DIFFICULTY[level].time)
     setFinished(false)
+    setStreak(0)
+    setStreakTotal(0)
+    setCorrectCount(0)
+    setLastBonus(0)
   }
 
   const reset = () => setDifficulty(null)
@@ -64,6 +87,7 @@ function CountryQuest() {
     if (!DIFFICULTY[difficulty].time) return
     if (timeLeft <= 0) {
       setPicked(TIMEOUT)
+      setStreak(0)
       return
     }
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
@@ -73,7 +97,18 @@ function CountryQuest() {
   const choose = (option) => {
     if (picked !== null) return
     setPicked(option)
-    if (option === round[index].answer) setScore((s) => s + 1)
+    if (option === round[index].answer) {
+      const base = pointsFor(difficulty, timeLeft)
+      const bonus = streak > 0 ? STREAK_BONUS : 0 // 2nd correct in a row onward
+      setScore((s) => s + base + bonus)
+      setStreakTotal((t) => t + bonus)
+      setCorrectCount((c) => c + 1)
+      setStreak(streak + 1)
+      setLastPoints(base)
+      setLastBonus(bonus)
+    } else {
+      setStreak(0)
+    }
   }
 
   const next = () => {
@@ -108,10 +143,14 @@ function CountryQuest() {
 
   // results
   if (finished) {
+    const perfect = correctCount === round.length ? PERFECT_BONUS : 0
+    const total = score + perfect
     return (
       <div style={pageStyle}>
         <h1>CountryQuest: {DIFFICULTY[difficulty].label}</h1>
-        <h2>Score: {score} / {round.length}</h2>
+        <h2>Score: {total} / {maxScore(round.length)}</h2>
+        <p>Streak bonus: +{streakTotal}</p>
+        {perfect > 0 && <p><strong>Perfect round bonus: +{perfect}</strong></p>}
         <div style={rowStyle}>
           <button className="game-button" onClick={() => start(difficulty)}>Play again</button>
           <button className="game-button" onClick={reset}>Change difficulty</button>
@@ -130,11 +169,14 @@ function CountryQuest() {
       <h1>CountryQuest: {d.label}</h1>
       <p>Question {index + 1} of {round.length} | Score: {score}</p>
 
-      {d.time > 0 && (
-        <h3 style={{ color: timeLeft <= 5 ? '#c62828' : 'inherit' }}>
-          Time left: {timeLeft}s
-        </h3>
+      {d.time > 0 && !answered && (
+        <>
+          <h3 style={{ color: timeLeft <= 5 ? '#c62828' : 'inherit' }}>
+            Time left: {timeLeft}s
+          </h3>
+        </>
       )}
+      {d.time === 0 && !answered && <p>Worth {MAX_POINTS} points</p>}
 
       <h2>{q.prompt}</h2>
 
@@ -175,10 +217,10 @@ function CountryQuest() {
       {answered && (
         <p>
           {picked === TIMEOUT
-            ? `Time's up! The answer is ${q.answer}.`
+            ? `Time's up! The answer is ${q.answer}. +0 points`
             : picked === q.answer
-              ? 'Correct!'
-              : `Not quite. The answer is ${q.answer}.`}
+              ? `Correct! +${lastPoints} points${lastBonus ? ` (+${lastBonus} streak bonus)` : ''}`
+              : `Not quite. The answer is ${q.answer}. +0 points`}
         </p>
       )}
 
