@@ -7,8 +7,15 @@ export class Dealer extends Character {
         this.difficulty = difficulty; 
         this.inventory = [];
     }
+    
+    chooseTarget(shotgun) {
+        const { live, blank } = shotgun.getCounts();
+        if (blank === 0) return 'opponent';
+        if (live === 0) return 'self';
+        return live / (live + blank) < 0.5 ? 'self' : 'opponent';
+    }
 
-    shootCharacter(target)  { super.shootCharacter(target); }
+    // shootCharacter(target)  { super.shootCharacter(target); }
 
     useItem(InventoryIndex) { }
 
