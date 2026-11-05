@@ -3,7 +3,7 @@ import { Character } from '../Interface/Character.js';
 
 export class Dealer extends Character {
     constructor(initHealth = 5, difficulty = 1) { 
-        super(initHealth); 
+        super('dealer', initHealth); 
         this.difficulty = difficulty; 
         this.inventory = [];
     }
@@ -24,4 +24,3 @@ export class Dealer extends Character {
     determineMoveset() { }
     executeMoveset() { }
 }
-

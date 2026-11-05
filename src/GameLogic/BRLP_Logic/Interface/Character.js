@@ -1,8 +1,8 @@
 export const MAX_ITEMS = 8;
 
 export class Character {
-    constructor(maxHealth = 4) {
-        this.id = id
+    constructor(id, maxHealth = 4) {
+        this.id = id;
         this.maxHealth = maxHealth;
         this.health = maxHealth;
         this.inventory = [];

@@ -1,9 +1,10 @@
+import { GameLog } from './GameLog.js';
 import { Shotgun } from './Items/Shotgun.js';
 import { Player } from './Characters/Player.js';
 import { Dealer } from './Characters/Dealer.js';
 
 
-class BuckshotGame {
+export class BuckshotGame {
     constructor(log = new GameLog()) {
         this.log = log;
         this.player = new Player();
@@ -20,9 +21,9 @@ class BuckshotGame {
         this.log.emit('TURN_START', { turn: this.turn });
     }
 
-    playerTurn(player) {
+    playerTurn(choice) {   // choice: 'self' | 'dealer'
         if (this.winner || this.turn !== 'player') return false;
-        const target = choice === 'self' ? player : this.dealer;
+        const target = choice === 'self' ? this.player : this.dealer;
         const shell = this.player.shootCharacter(target, this.shotgun);
         this.afterShot(this.player, target, shell);
         return true;
