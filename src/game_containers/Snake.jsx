@@ -1,9 +1,19 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 import snakeImage from '../assets/snake-item.png'
 
+const GAME_OVER_MESSAGES = {
+  wall: 'You hit a wall',
+  self: 'You hit yourself',
+  win: 'You filled the whole board!',
+}
+
 const Snake = () => {
   const containerRef = useRef(null)
+  
+  const [score, setScore] = useState(0)
+  const [gameOverReason, setGameOverReason] = useState(null)
+  const [gameKey, setGameKey] = useState(0) 
 
   useEffect(() => {
     let app
@@ -25,6 +35,7 @@ const Snake = () => {
       }
 
       if (containerRef.current) {
+        containerRef.current.innerHTML = ''
         containerRef.current.appendChild(app.canvas)
       }
 
@@ -36,8 +47,8 @@ const Snake = () => {
       let food
       let direction = { x: 1, y: 0 }
       let nextDirection = { x: 1, y: 0 }
-      const gridSize = 16
-      const speed = 8
+      const gridSize = 24
+      const speed = 15
       let frameCount = 0
       let gameOver = false
 
@@ -92,14 +103,14 @@ const Snake = () => {
 
           if (headX < 0 || headX >= app.screen.width || headY < 0 || headY >= app.screen.height) {
             gameOver = true
-            alert("Game Over! You hit a wall. Leave this page and come back to restart.")
+            setGameOverReason('wall')
             return
           }
 
           for (let i = 0; i < snake.length; i++) {
             if (snake[i].x === headX && snake[i].y === headY) {
               gameOver = true
-              alert("Game Over! You bit your own tail. Leave this page and come back to restart.")
+              setGameOverReason('self')
               return
             }
           }
@@ -121,6 +132,8 @@ const Snake = () => {
             snake.push(tail)
             app.stage.addChild(tail)
             placeFood()
+            
+            setScore(prevScore => prevScore + 1)
           }
         }
       }
@@ -134,20 +147,38 @@ const Snake = () => {
     return () => {
       isDestroyed = true
       if (app) {
-        if (app.cleanupListeners){
-          app.cleanupListeners()
-        }
+        if (app.cleanupListeners) app.cleanupListeners()
         if (app.renderer) {
           app.destroy({ removeView: true })
         }
       }
     }
-  }, [])
+  }, [gameKey])
+
+  const restart = () => {
+    setScore(0)
+    setGameOverReason(null)
+    setGameKey(prev => prev + 1)
+  }
 
   return (
-    <div className="snake-game-container" style={{ background: '#57997a', color: 'white' }}>
+    <div className="snake-game-container">
       <h3>Snake</h3>
-      <div className="snake-board" ref={containerRef}></div>
+      <p className="snake-score">Score: {score}</p>
+      
+      <div className="snake-board" ref={containerRef}>
+        {gameOverReason && (
+          <div className="snake-overlay">
+            <p>Game Over!</p>
+            <p>{GAME_OVER_MESSAGES[gameOverReason]}</p>
+            <button className="game-button" onClick={restart}>
+              Play again
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <p className="snake-help">Use the arrow keys to move.</p>
     </div>
   )
 }
