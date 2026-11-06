@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 import snakeImage from '../assets/snake-item.png'
 
+//fix the right side screen bug
+const GRID_SIZE = 24
+const COLS = 20
+const BOARD_SIZE = COLS * GRID_SIZE
+
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
   self: 'You hit yourself',
@@ -23,10 +28,10 @@ const Snake = () => {
       app = new PIXI.Application()
       
       await app.init({
-        width: 512,
-        height: 512,
+        width: BOARD_SIZE,
+        height: BOARD_SIZE,
         antialias: false,
-        backgroundColor: 0x1e293b
+        backgroundColor: 0x1e293b,
       })
 
       if (isDestroyed) {
@@ -47,13 +52,13 @@ const Snake = () => {
       let food
       let direction = { x: 1, y: 0 }
       let nextDirection = { x: 1, y: 0 }
-      const gridSize = 24
+      const gridSize = GRID_SIZE
       const speed = 15
       let frameCount = 0
       let gameOver = false
 
-      const startX = Math.floor((app.screen.width / 2) / gridSize) * gridSize
-      const startY = Math.floor((app.screen.height / 2) / gridSize) * gridSize
+      const startX = Math.floor(COLS / 2) * gridSize
+      const startY = Math.floor(COLS / 2) * gridSize
 
       for (let i = 0; i < 3; i++) {
         const segment = new PIXI.Sprite(texture)
@@ -71,10 +76,8 @@ const Snake = () => {
       food.tint = 0xf43f5e
       
       const placeFood = () => {
-        const maxCols = app.screen.width / gridSize
-        const maxRows = app.screen.height / gridSize
-        food.x = Math.floor(Math.random() * maxCols) * gridSize
-        food.y = Math.floor(Math.random() * maxRows) * gridSize
+        food.x = Math.floor(Math.random() * COLS) * gridSize
+        food.y = Math.floor(Math.random() * COLS) * gridSize
       }
       
       placeFood()
@@ -101,7 +104,7 @@ const Snake = () => {
           const headX = snake[0].x + (direction.x * gridSize)
           const headY = snake[0].y + (direction.y * gridSize)
 
-          if (headX < 0 || headX >= app.screen.width || headY < 0 || headY >= app.screen.height) {
+          if (headX < 0 || headX >= BOARD_SIZE || headY < 0 || headY >= BOARD_SIZE) {
             gameOver = true
             setGameOverReason('wall')
             return
