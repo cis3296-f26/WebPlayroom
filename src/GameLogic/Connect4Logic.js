@@ -18,3 +18,28 @@ export function dropPiece(board, column, player) {
 
   return null
 }
+
+export function checkWinner(board, row, column, player) {
+  if (!player || board[row]?.[column] !== player) return false
+
+  const directions = [[0, 1], [1, 0], [1, 1], [1, -1]]
+
+  for (const [rowChange, columnChange] of directions) {
+    let total = 1
+
+    for (const side of [-1, 1]) {
+      let r = row + rowChange * side
+      let c = column + columnChange * side
+
+      while (board[r]?.[c] === player) {
+        total++
+        r += rowChange * side
+        c += columnChange * side
+      }
+    }
+
+    if (total >= 4) return true
+  }
+
+  return false
+}

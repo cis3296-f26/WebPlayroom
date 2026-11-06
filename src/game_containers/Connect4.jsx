@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { COLUMNS, ROWS, createBoard, dropPiece } from '../GameLogic/Connect4Logic.js'
+import { COLUMNS, ROWS, createBoard, dropPiece, checkWinner } from '../GameLogic/Connect4Logic.js'
 
 function newGame() {
   return {
     board: createBoard(),
     currentPlayer: 'red',
+    winner: null,
   }
 }
 
@@ -13,12 +14,16 @@ const Connect4 = () => {
 
   function playColumn(column) {
     setGame((current) => {
+      if (current.winner) return current
+
       const move = dropPiece(current.board, column, current.currentPlayer)
       if (!move) return current
 
+      const won = checkWinner(move.board, move.row, column, current.currentPlayer)
       return {
         board: move.board,
         currentPlayer: current.currentPlayer === 'red' ? 'yellow' : 'red',
+        winner: won ? current.currentPlayer : null,
       }
     })
   }
@@ -31,6 +36,12 @@ const Connect4 = () => {
         <span><span className="connect4-token red" aria-hidden="true" /> Player 1 (Red)</span>
         <span><span className="connect4-token yellow" aria-hidden="true" /> Player 2 (Yellow)</span>
       </div>
+
+      {game.winner && (
+        <p className="connect4-result" role="status">
+          Player {game.winner === 'red' ? '1 (Red)' : '2 (Yellow)'} wins!
+        </p>
+      )}
 
       <div className="connect4-board" role="group" aria-label="Connect 4 board">
         {Array.from({ length: COLUMNS }, (_, column) => {
@@ -45,7 +56,7 @@ const Connect4 = () => {
               key={column}
               className="connect4-column"
               aria-label={'Column ' + (column + 1) + ', ' + filled + ' of ' + ROWS + ' filled'}
-              disabled={filled === ROWS}
+              disabled={filled === ROWS || game.winner !== null}
               onClick={() => playColumn(column)}
             >
               <span className="connect4-column-label" aria-hidden="true">{column + 1}</span>

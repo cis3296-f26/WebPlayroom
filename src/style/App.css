@@ -125,6 +125,11 @@
   font-size: 0.85rem;
 }
 
+.connect4-result {
+  margin: 0;
+  font-weight: 700;
+}
+
 .connect4-board {
   box-sizing: border-box;
   display: grid;
