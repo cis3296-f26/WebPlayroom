@@ -1,7 +1,25 @@
 import { Vector } from './Vector'
-import { BALL_ACCEL, FRICTION, MIN_SPEED, RESTITUTION } from '../constants'
+import {
+  BALL_ACCEL,
+  FRICTION,
+  MIN_SPEED,
+  RESTITUTION,
+  COLLISION_ITERATIONS,
+  WALL_RESTITUTION,
+  TABLE_WIDTH,
+  TABLE_HEIGHT
+} from '../constants'
 
-// Moves one ball for one frame: friction, then position. Call on every ball.
+// Advances the whole game by one fixed physics step (STEP_MS).
+// Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
+export function stepPhysics (balls, cueBall, keys) {
+  applyInput(cueBall, keys)          // only the cue ball is player-controlled
+  for (const b of balls) updateBall(b) // every ball gets friction + movement
+  handleCollisions(balls)
+  for (const b of balls) handleWalls(b) // last, so no ball ends the step outside the table
+}
+
+// Moves one ball for one step: friction, then position. Call on every ball.
 export function updateBall (ball) {
   applyFriction(ball)
   updatePosition(ball)
@@ -30,18 +48,69 @@ function updatePosition (ball) {
   ball.pos = ball.pos.add(ball.vel)
 }
 
+// Keeps a ball on the table. If it has crossed an edge, put it back against that
+// wall and send it away from the wall, losing some speed like a real cushion.
+function handleWalls (ball) {
+  const r = ball.radius
+  let { x, y } = ball.pos
+  let { x: vx, y: vy } = ball.vel
+
+  // Math.abs forces the new direction to point away from the wall. Just flipping the
+  // sign could flip it twice and trap the ball in the wall.
+  if (x - r < 0) {                 // left wall
+    x = r
+    vx = Math.abs(vx) * WALL_RESTITUTION
+  } else if (x + r > TABLE_WIDTH) { // right wall
+    x = TABLE_WIDTH - r
+    vx = -Math.abs(vx) * WALL_RESTITUTION
+  }
+
+  if (y - r < 0) {                  // top wall
+    y = r
+    vy = Math.abs(vy) * WALL_RESTITUTION
+  } else if (y + r > TABLE_HEIGHT) { // bottom wall
+    y = TABLE_HEIGHT - r
+    vy = -Math.abs(vy) * WALL_RESTITUTION
+  }
+
+  ball.pos = new Vector(x, y)
+  ball.vel = new Vector(vx, vy)
+}
+
 export function areColliding (a, b) {
   const distance = b.pos.subtract(a.pos).magnitude()
   return distance <= a.radius + b.radius
 }
 
 export function handleCollisions (balls) {
+  // Repeat because fixing one pair can push a ball into another (common in the rack)
+  for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
+    const contacts = findContacts(balls)
+    if (contacts.length === 0) break // nothing touching, so stop early
+
+    // Resolve touching pairs in a random order. Whichever pair goes first gets the
+    // most energy, so a fixed order always favored the same side of the rack.
+    shuffle(contacts)
+    for (const [a, b] of contacts) resolveCollision(a, b)
+  }
+}
+
+// Every pair of balls that is currently touching, as [a, b] arrays
+function findContacts (balls) {
+  const contacts = []
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) {
-      if (areColliding(balls[i], balls[j])) {
-        resolveCollision(balls[i], balls[j])
-      }
+      if (areColliding(balls[i], balls[j])) contacts.push([balls[i], balls[j]])
     }
+  }
+  return contacts
+}
+
+// Fisher-Yates shuffle: puts the array in a random order, in place
+function shuffle (array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]]
   }
 }
 
