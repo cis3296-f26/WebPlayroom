@@ -16,10 +16,12 @@ const GAME_OVER_MESSAGES = {
 
 const Snake = () => {
   const containerRef = useRef(null)
+  const gameStartedRef = useRef(false) // Ref to track if the game has started
   
   const [score, setScore] = useState(0)
   const [gameOverReason, setGameOverReason] = useState(null)
   const [gameKey, setGameKey] = useState(0) 
+  const [gameStarted, setGameStarted] = useState(false)
 
   useEffect(() => {
     let app
@@ -41,7 +43,6 @@ const Snake = () => {
       }
 
       if (containerRef.current) {
-        containerRef.current.innerHTML = ''
         containerRef.current.appendChild(app.canvas)
       }
 
@@ -84,7 +85,17 @@ const Snake = () => {
       app.stage.addChild(food)
 
       const handleInput = (e) => {
+        if(e.code == "Space") {
+          e.preventDefault()
+          if (!gameStartedRef.current) {
+            gameStartedRef.current = true
+            setGameStarted(true)
+          }
+          return
+        }
+
         if (e.key.startsWith('Arrow')) e.preventDefault()
+        if(!gameStartedRef.current) return // Ignore inputs if game hasn't started 
         if (e.key === "ArrowUp" && direction.y === 0) nextDirection = { x: 0, y: -1 }
         if (e.key === "ArrowDown" && direction.y === 0) nextDirection = { x: 0, y: 1 }
         if (e.key === "ArrowLeft" && direction.x === 0) nextDirection = { x: -1, y: 0 }
@@ -94,7 +105,7 @@ const Snake = () => {
       window.addEventListener("keydown", handleInput)
 
       const gameLoop = (ticker) => {
-        if (gameOver) return
+        if(!gameStartedRef.current || gameOver) return 
         timeElapsed += ticker.deltaMS
 
         if (timeElapsed >= STEP_MILLIS) {
@@ -159,6 +170,8 @@ const Snake = () => {
   }, [gameKey])
 
   const restart = () => {
+    gameStartedRef.current = false
+    setGameStarted(false)
     setScore(0)
     setGameOverReason(null)
     setGameKey(prev => prev + 1)
@@ -169,7 +182,15 @@ const Snake = () => {
       <h3>Snake</h3>
       <p className="snake-score">Score: {score}</p>
       
-      <div className="snake-board" ref={containerRef}>
+      <div className="snake-board">
+        <div ref={containerRef}></div>
+
+        {!gameStarted && !gameOverReason && (
+          <div className="snake-overlay">
+            <p>Press the space bar to start</p>
+          </div>
+        )}
+
         {gameOverReason && (
           <div className="snake-overlay">
             <p>Game Over!</p>
