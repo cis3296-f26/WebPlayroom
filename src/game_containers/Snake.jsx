@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 import snakeImage from '../assets/snake-item.png'
 
-//fix the right side screen bug
+//constants
 const GRID_SIZE = 24
 const COLS = 20
 const BOARD_SIZE = COLS * GRID_SIZE
+const STEP_MILLIS = 250 // time between snake moves in milliseconds
 
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
@@ -53,8 +54,7 @@ const Snake = () => {
       let direction = { x: 1, y: 0 }
       let nextDirection = { x: 1, y: 0 }
       const gridSize = GRID_SIZE
-      const speed = 15
-      let frameCount = 0
+      let timeElapsed = 0
       let gameOver = false
 
       const startX = Math.floor(COLS / 2) * gridSize
@@ -93,12 +93,12 @@ const Snake = () => {
       
       window.addEventListener("keydown", handleInput)
 
-      const gameLoop = () => {
+      const gameLoop = (ticker) => {
         if (gameOver) return
-        frameCount++
-        
-        if (frameCount >= speed) {
-          frameCount = 0
+        timeElapsed += ticker.deltaMS
+
+        if (timeElapsed >= STEP_MILLIS) {
+          timeElapsed -= STEP_MILLIS
           direction = nextDirection
 
           const headX = snake[0].x + (direction.x * gridSize)
