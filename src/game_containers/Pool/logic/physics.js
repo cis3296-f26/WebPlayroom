@@ -1,19 +1,18 @@
 import { Vector } from './Vector'
 import {
-  BALL_ACCEL,
   FRICTION,
   MIN_SPEED,
   RESTITUTION,
   COLLISION_ITERATIONS,
   WALL_RESTITUTION,
   TABLE_WIDTH,
-  TABLE_HEIGHT
+  TABLE_HEIGHT,
+  MAX_SHOT_SPEED
 } from '../constants'
 
 // Advances the whole game by one fixed physics step (STEP_MS).
 // Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
-export function stepPhysics (balls, cueBall, keys) {
-  applyInput(cueBall, keys)          // only the cue ball is player-controlled
+export function stepPhysics (balls) {
   for (const b of balls) updateBall(b) // every ball gets friction + movement
   handleCollisions(balls)
   for (const b of balls) handleWalls(b) // last, so no ball ends the step outside the table
@@ -25,16 +24,14 @@ export function updateBall (ball) {
   updatePosition(ball)
 }
 
-// Turn the held arrow keys into an acceleration, then add it to velocity
-export function applyInput (ball, keys) {
-  const direction = new Vector(
-    (keys.right ? 1 : 0) - (keys.left ? 1 : 0),
-    (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
-  )
+// Strikes the cue ball. power is 0 to 1 (how far the cue was pulled back).
+export function shoot (cueBall, direction, power) {
+  cueBall.vel = direction.normalize().multiply(power * MAX_SHOT_SPEED)
+}
 
-  // normalize() keeps diagonal pushes the same strength as straight ones
-  ball.acc = direction.normalize().multiply(BALL_ACCEL)
-  ball.vel = ball.vel.add(ball.acc)
+// True once friction has brought every ball to a full stop (shots are only allowed then)
+export function allBallsStopped (balls) {
+  return balls.every(b => b.vel.x === 0 && b.vel.y === 0)
 }
 
 // Shrink velocity a little every frame; stop once the ball is barely moving

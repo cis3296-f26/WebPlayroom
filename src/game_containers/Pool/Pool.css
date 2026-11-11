@@ -2,6 +2,8 @@
     background-color: #006400;
     border: 4px solid black;
     border-radius: 10px;
+    cursor: crosshair;
+    touch-action: none; /* stops touch screens from scrolling while you aim */
 }
 
 .pool-game-container {
@@ -14,4 +16,9 @@
     background: brown;
     color: white;
     margin: 0;
+}
+
+.pool-instructions {
+    margin-top: 12px;
+    opacity: 0.85;
 }
