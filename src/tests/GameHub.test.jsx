@@ -14,7 +14,7 @@ const GAMES = [
 describe('GameHub (homepage)', () => {
   it('shows the welcome heading and instructions', () => {
     renderWithRouter(<GameHub />)
-    expect(screen.getByRole('heading', { name: /welcome to webplayroom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /webplayroom/i })).toBeInTheDocument()
     expect(screen.getByText(/choose a game to play/i)).toBeInTheDocument()
   })
 

@@ -4,9 +4,12 @@
 }
 
 .hub-links {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  place-items: center;
+  width: 300%;
+  height: 300%;
+  background: radial-gradient(circle, #ccc 1px, transparent 1px) 0 0 / 20px 20px;
 }
 
 .game-button {
@@ -33,14 +36,22 @@
 }
 
 /* Style for the gamehub container */
-.game-container { 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  margin: 2rem;
-  text-align: center; 
+.game-container {
+  height: calc(100dvh - 90px);
+  box-sizing: border-box;
+  border: solid #1a1a1a;
+  border-width: 0 24px 24px;
+  overflow: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+  touch-action: pinch-zoom;
+  user-select: none;
+  cursor: grab;
+  text-align: center;
+}
+
+.game-container:active {
+  cursor: grabbing;
 }
 
 /*Style for snake game container */

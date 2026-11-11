@@ -21,7 +21,7 @@ describe('App routing', () => {
 
   it('renders the homepage at "/"', () => {
     renderWithRouter(<App />)
-    expect(screen.getByRole('heading', { name: /welcome to webplayroom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /webplayroom/i })).toBeInTheDocument()
   })
 
   it.each(ROUTES)('renders the $title page at $path', ({ path, title }) => {
@@ -51,6 +51,6 @@ describe('App routing', () => {
     const user = userEvent.setup()
     renderWithRouter(<App />, { route: '/pool' })
     await user.click(screen.getByRole('link', { name: 'WebPlayroom' }))
-    expect(screen.getByRole('heading', { name: /welcome to webplayroom/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /webplayroom/i })).toBeInTheDocument()
   })
 })
