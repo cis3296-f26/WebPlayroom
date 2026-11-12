@@ -8,12 +8,16 @@ const DIFFICULTY = {
 }
 
 // time ~ score feature
-const MAX_POINTS = 10
-const STREAK_BONUS = 2
+const ROUND_SIZE = 5
+const MAX_POINTS = 15       // base points per question (before the time penalty)
+const STREAK_STEP = 0.1     // 10% per consecutive correct answer
+const MAX_STREAK_STEPS = 4  // caps at +40%
 const PERFECT_BONUS = 10
 
-const maxScore = (questions) =>
-  questions * MAX_POINTS + (questions - 1) * STREAK_BONUS + PERFECT_BONUS
+const MAX_TOTAL =
+  MAX_POINTS * (ROUND_SIZE + (STREAK_STEP * (ROUND_SIZE - 1) * ROUND_SIZE) / 2) + PERFECT_BONUS
+
+const fmt = (n) => Number(n.toFixed(1)) // tidy decimals for display
 
 const pointsFor = (level, timeLeft) => {
   const limit = DIFFICULTY[level].time
@@ -66,7 +70,7 @@ function CountryQuest() {
 
   const start = (level) => {
     setDifficulty(level)
-    setRound(shuffle(QUESTIONS[level]).map((q) => ({ ...q, options: shuffle(q.options) })))
+    setRound(shuffle(QUESTIONS[level]).slice(0, ROUND_SIZE).map((q) => ({ ...q, options: shuffle(q.options) })))
     setIndex(0)
     setScore(0)
     setHintShown(false)
@@ -99,7 +103,7 @@ function CountryQuest() {
     setPicked(option)
     if (option === round[index].answer) {
       const base = pointsFor(difficulty, timeLeft)
-      const bonus = streak > 0 ? STREAK_BONUS : 0 // 2nd correct in a row onward
+      const bonus = base * STREAK_STEP * Math.min(streak, MAX_STREAK_STEPS) // 2nd correct in a row onward
       setScore((s) => s + base + bonus)
       setStreakTotal((t) => t + bonus)
       setCorrectCount((c) => c + 1)
@@ -148,8 +152,8 @@ function CountryQuest() {
     return (
       <div style={pageStyle}>
         <h1>CountryQuest: {DIFFICULTY[difficulty].label}</h1>
-        <h2>Score: {total} / {maxScore(round.length)}</h2>
-        <p>Streak bonus: +{streakTotal}</p>
+        <h2>Score: {Math.round(total)} / {MAX_TOTAL}</h2>
+        <p>Streak bonus: +{fmt(streakTotal)}</p>
         {perfect > 0 && <p><strong>Perfect round bonus: +{perfect}</strong></p>}
         <div style={rowStyle}>
           <button className="game-button" onClick={() => start(difficulty)}>Play again</button>
@@ -167,7 +171,7 @@ function CountryQuest() {
   return (
     <div style={pageStyle}>
       <h1>CountryQuest: {d.label}</h1>
-      <p>Question {index + 1} of {round.length} | Score: {score}</p>
+      <p>Question {index + 1} of {round.length} | Score: {Math.round(score)} | Streak: {streak}</p>
 
       {d.time > 0 && !answered && (
         <>
@@ -219,7 +223,7 @@ function CountryQuest() {
           {picked === TIMEOUT
             ? `Time's up! The answer is ${q.answer}. +0 points`
             : picked === q.answer
-              ? `Correct! +${lastPoints} points${lastBonus ? ` (+${lastBonus} streak bonus)` : ''}`
+              ? `Correct! +${lastPoints} points${lastBonus ? ` (+${fmt(lastBonus)} streak bonus)` : ''}`
               : `Not quite. The answer is ${q.answer}. +0 points`}
         </p>
       )}
