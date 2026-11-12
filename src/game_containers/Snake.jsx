@@ -1,18 +1,27 @@
-
 import { useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 
 //constants
 const GRID_SIZE = 24
-const COLS = 20
-const BOARD_SIZE = COLS * GRID_SIZE
-const STEP_MILLIS = 150 // time between snake moves in milliseconds
 
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
   self: 'You hit yourself',
   win: 'You filled the whole board!',
 }
+
+const BOARD_SIZES = {
+  small: {label: 'Small', cols: 10},
+  medium: {label: 'Medium', cols: 14},
+  large: {label: 'Large', cols: 20},
+}
+
+const STEP_SIZES = {
+  slow: {label: 'Slow', stepMillis: 200},
+  normal: {label: 'Normal', stepMillis: 150},
+  fast: {label: 'Fast', stepMillis: 100},
+}
+
 
 const Snake = () => {
   const containerRef = useRef(null)
@@ -22,6 +31,12 @@ const Snake = () => {
   const [gameOverReason, setGameOverReason] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
+  const [boardSize, setBoardSize] = useState('medium')
+  const [stepSize, setStepSize] = useState('normal')
+
+  const cols = BOARD_SIZES[boardSize].cols
+  const boardPixelSize = cols * GRID_SIZE
+  const stepMillis = STEP_SIZES[stepSize].stepMillis
 
   useEffect(() => {
     let app
@@ -29,10 +44,10 @@ const Snake = () => {
 
     const initializePixi = async () => {
       app = new PIXI.Application()
-
+      
       await app.init({
-        width: BOARD_SIZE,
-        height: BOARD_SIZE,
+        width: boardPixelSize,
+        height: boardPixelSize,
         antialias: true,
         backgroundColor: 0x1e293b,
       })
@@ -101,8 +116,8 @@ const Snake = () => {
       let timeElapsed = 0
       let gameOver = false
 
-      const startX = Math.floor(COLS / 2) * gridSize
-      const startY = Math.floor(COLS / 2) * gridSize
+      const startX = Math.floor(cols / 2) * gridSize
+      const startY = Math.floor(cols / 2) * gridSize
 
       for (let i = 0; i < 3; i++) {
         const segment = new PIXI.Sprite(snakeRender)
@@ -131,8 +146,8 @@ const Snake = () => {
 
         // Ensure food doesn't spawn on the snake
         do {
-          foodX = Math.floor(Math.random() * COLS) * gridSize
-          foodY = Math.floor(Math.random() * COLS) * gridSize
+          foodX = Math.floor(Math.random() * cols) * gridSize
+          foodY = Math.floor(Math.random() * cols) * gridSize
           occupied = snake.some(segment =>
             Math.floor((segment.x - gridSize / 2) / gridSize) === foodX / gridSize &&
             Math.floor((segment.y - gridSize / 2) / gridSize) === foodY / gridSize
@@ -171,14 +186,14 @@ const Snake = () => {
         if (!gameStartedRef.current || gameOver) return
         timeElapsed += ticker.deltaMS
 
-        if (timeElapsed >= STEP_MILLIS) {
-          timeElapsed -= STEP_MILLIS
+        if (timeElapsed >= stepMillis) {
+          timeElapsed -= stepMillis
           direction = nextDirection
 
           const headX = snake[0].x - gridSize / 2 + (direction.x * gridSize)
           const headY = snake[0].y - gridSize / 2 + (direction.y * gridSize)
 
-          if (headX < 0 || headX >= BOARD_SIZE || headY < 0 || headY >= BOARD_SIZE) {
+          if (headX < 0 || headX >= boardPixelSize || headY < 0 || headY >= boardPixelSize) {
             gameOver = true
             setGameOverReason('wall')
             return
@@ -217,7 +232,7 @@ const Snake = () => {
             app.stage.addChild(tail)
 
             //Check if snake has filled the whole board
-            if(snake.length == COLS * COLS) {
+            if(snake.length == cols * cols) {
               gameOver = true
               setGameOverReason('win')
               return
@@ -245,7 +260,7 @@ const Snake = () => {
         }
       }
     }
-  }, [gameKey])
+  }, [gameKey, cols, boardPixelSize, stepMillis]) //Makes sure the game resets when the board size or step size changes
 
   const restart = () => {
     gameStartedRef.current = false
@@ -265,8 +280,35 @@ const Snake = () => {
 
         {!gameStarted && !gameOverReason && (
           <div className="snake-overlay">
-            <p>Press the space bar to start</p>
-          </div>
+            <div className="snake-settings">
+              <p>Board Size:</p>
+              <div className="snake-options">
+                {Object.entries(BOARD_SIZES).map(([key, opt]) => (
+                  <button
+                    key={key}
+                    className={`game-button ${boardSize === key ? 'selected' : ''}`}
+                    onClick={() => setBoardSize(key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <p>Speed:</p>
+              <div className="snake-options">
+                {Object.entries(STEP_SIZES).map(([key, opt]) => (
+                  <button
+                    key={key}
+                    className={`game-button ${stepSize === key ? 'selected' : ''}`}
+                    onClick={() => setStepSize(key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          <p>Press Space to Start</p>
+        </div>
         )}
 
         {gameOverReason && (
