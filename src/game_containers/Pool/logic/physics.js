@@ -1,22 +1,85 @@
 import { Vector } from './Vector'
-import { BALL_ACCEL, FRICTION, MIN_SPEED, RESTITUTION } from '../constants'
+import {
+  FRICTION,
+  MIN_SPEED,
+  RESTITUTION,
+  COLLISION_ITERATIONS,
+  WALL_RESTITUTION,
+  TABLE_WIDTH,
+  TABLE_HEIGHT,
+  TABLE_CENTER_Y,
+  CUE_START_X,
+  MAX_SHOT_SPEED,
+  POCKETS,
+  POCKET_RADIUS
+} from '../constants'
 
-// Moves one ball for one frame: friction, then position. Call on every ball.
+// Advances the whole game by one fixed physics step (STEP_MS).
+// Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
+// Returns the balls that dropped into a pocket during this step.
+export function stepPhysics (balls) {
+  const onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+
+  for (const b of onTable) updateBall(b) // every ball gets friction + movement
+  handleCollisions(onTable)
+
+  // Pockets are checked before walls, so a ball heading into a pocket's mouth
+  // drops in instead of bouncing off the cushion next to it
+  const pocketedNow = onTable.filter(b => handlePockets(b))
+
+  for (const b of onTable) {
+    if (!b.pocketed) handleWalls(b) // last, so no ball ends the step outside the table
+  }
+
+  return pocketedNow
+}
+
+// Moves one ball for one step: friction, then position. Call on every ball.
 export function updateBall (ball) {
   applyFriction(ball)
   updatePosition(ball)
 }
 
-// Turn the held arrow keys into an acceleration, then add it to velocity
-export function applyInput (ball, keys) {
-  const direction = new Vector(
-    (keys.right ? 1 : 0) - (keys.left ? 1 : 0),
-    (keys.down ? 1 : 0) - (keys.up ? 1 : 0)
+// Strikes the cue ball. power is 0 to 1 (how far the cue was pulled back).
+export function shoot (cueBall, direction, power) {
+  cueBall.vel = direction.normalize().multiply(power * MAX_SHOT_SPEED)
+}
+
+// True once friction has brought every ball to a full stop (shots are only allowed then)
+export function allBallsStopped (balls) {
+  return balls.every(b => b.vel.x === 0 && b.vel.y === 0)
+}
+
+// If the ball is close enough to a pocket, it drops in: it stops and leaves play.
+// Returns true if it was pocketed.
+function handlePockets (ball) {
+  for (const pocket of POCKETS) {
+    if (ball.pos.subtract(pocket).magnitude() < POCKET_RADIUS) {
+      ball.pocketed = true
+      ball.vel = new Vector(0, 0)
+      ball.pos = new Vector(pocket.x, pocket.y)
+      return true
+    }
+  }
+  return false
+}
+
+// After a scratch (the cue ball was pocketed), put the cue ball back on its starting
+// spot. If another ball is sitting there, slide left until the spot is clear.
+export function respotCueBall (cueBall, balls) {
+  const isBlocked = (pos) => balls.some(b =>
+    b !== cueBall && !b.pocketed &&
+    b.pos.subtract(pos).magnitude() < b.radius + cueBall.radius
   )
 
-  // normalize() keeps diagonal pushes the same strength as straight ones
-  ball.acc = direction.normalize().multiply(BALL_ACCEL)
-  ball.vel = ball.vel.add(ball.acc)
+  let spot = new Vector(CUE_START_X, TABLE_CENTER_Y)
+  while (isBlocked(spot) && spot.x > cueBall.radius * 2) {
+    spot = spot.subtract(new Vector(cueBall.radius, 0))
+  }
+
+  cueBall.pos = spot
+  cueBall.vel = new Vector(0, 0)
+  cueBall.pocketed = false
 }
 
 // Shrink velocity a little every frame; stop once the ball is barely moving
@@ -30,18 +93,69 @@ function updatePosition (ball) {
   ball.pos = ball.pos.add(ball.vel)
 }
 
+// Keeps a ball on the table. If it has crossed an edge, put it back against that
+// wall and send it away from the wall, losing some speed like a real cushion.
+function handleWalls (ball) {
+  const r = ball.radius
+  let { x, y } = ball.pos
+  let { x: vx, y: vy } = ball.vel
+
+  // Math.abs forces the new direction to point away from the wall. Just flipping the
+  // sign could flip it twice and trap the ball in the wall.
+  if (x - r < 0) {                 // left wall
+    x = r
+    vx = Math.abs(vx) * WALL_RESTITUTION
+  } else if (x + r > TABLE_WIDTH) { // right wall
+    x = TABLE_WIDTH - r
+    vx = -Math.abs(vx) * WALL_RESTITUTION
+  }
+
+  if (y - r < 0) {                  // top wall
+    y = r
+    vy = Math.abs(vy) * WALL_RESTITUTION
+  } else if (y + r > TABLE_HEIGHT) { // bottom wall
+    y = TABLE_HEIGHT - r
+    vy = -Math.abs(vy) * WALL_RESTITUTION
+  }
+
+  ball.pos = new Vector(x, y)
+  ball.vel = new Vector(vx, vy)
+}
+
 export function areColliding (a, b) {
   const distance = b.pos.subtract(a.pos).magnitude()
   return distance <= a.radius + b.radius
 }
 
 export function handleCollisions (balls) {
+  // Repeat because fixing one pair can push a ball into another (common in the rack)
+  for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
+    const contacts = findContacts(balls)
+    if (contacts.length === 0) break // nothing touching, so stop early
+
+    // Resolve touching pairs in a random order. Whichever pair goes first gets the
+    // most energy, so a fixed order always favored the same side of the rack.
+    shuffle(contacts)
+    for (const [a, b] of contacts) resolveCollision(a, b)
+  }
+}
+
+// Every pair of balls that is currently touching, as [a, b] arrays
+function findContacts (balls) {
+  const contacts = []
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) {
-      if (areColliding(balls[i], balls[j])) {
-        resolveCollision(balls[i], balls[j])
-      }
+      if (areColliding(balls[i], balls[j])) contacts.push([balls[i], balls[j]])
     }
+  }
+  return contacts
+}
+
+// Fisher-Yates shuffle: puts the array in a random order, in place
+function shuffle (array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]]
   }
 }
 

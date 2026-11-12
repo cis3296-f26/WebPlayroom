@@ -1,35 +1,62 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import './Pool.css'
 import { drawFrame } from './logic/render'
-import { applyInput, updateBall, handleCollisions } from './logic/physics'
-import { setupKeyboard } from './logic/input'
-//import Ball from './logic/Ball';
+import { stepPhysics, shoot, allBallsStopped, respotCueBall } from './logic/physics'
+import { setupCueControls } from './logic/input'
 import { createStartingLineup } from './logic/startingLineup'
 import {
   TABLE_WIDTH,
-  TABLE_HEIGHT
+  TABLE_HEIGHT,
+  STEP_MS,
+  MAX_FRAME_MS
 } from './constants'
 
 const Pool = () => {
   const canvasRef = useRef(null) 
+  const [pocketedBalls, setPocketedBalls] = useState([]) // object balls that have gone in, for the tray
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvasRef.current.getContext('2d')
-    canvas.focus()
-
-    const { keys, cleanup } = setupKeyboard(canvas);
+    if (!ctx) return // no canvas support (e.g. the jsdom test environment), so skip the game loop
 
     const balls = createStartingLineup();
     const cueBall = balls[0];
 
+    const canShoot = () => allBallsStopped(balls) && !cueBall.pocketed
+    const { cue, cleanup } = setupCueControls(canvas, cueBall, canShoot, (direction, power) => {
+      shoot(cueBall, direction, power)
+    })
+
     let frameId
-    const loop = () => {
-      applyInput(cueBall, keys)              // only the white ball is player-controlled
-      for (const b of balls) updateBall(b) // every ball gets friction + movement
-      handleCollisions(balls)
-      drawFrame(ctx, balls)
+    let lastTime = null // timestamp of the previous frame
+    let accumulator = 0 // real time (ms) that hasn't been simulated yet
+
+    // requestAnimationFrame passes the current time in ms as `now`
+    const loop = (now) => {
+      if (lastTime === null) lastTime = now
+      const frameTime = Math.min(now - lastTime, MAX_FRAME_MS)
+      lastTime = now
+
+      // Run as many fixed-size physics steps as the elapsed time covers.
+      // 60Hz screen: 1 per frame. 120Hz: 0 or 1. Slow 30fps computer: 2.
+      accumulator += frameTime
+      while (accumulator >= STEP_MS) {
+        const pocketedNow = stepPhysics(balls)
+        accumulator -= STEP_MS
+
+        // Only update React state when something actually went in (not every step)
+        const objectBalls = pocketedNow.filter(b => b !== cueBall)
+        if (objectBalls.length > 0) {
+          setPocketedBalls(prev => [...prev, ...objectBalls.map(b => ({ number: b.number, color: b.color, type: b.type }))])
+        }
+      }
+
+      // Scratch: once everything stops, the cue ball comes back to its starting spot
+      if (cueBall.pocketed && allBallsStopped(balls)) respotCueBall(cueBall, balls)
+
+      drawFrame(ctx, balls, cueBall, cue, canShoot())
       frameId = requestAnimationFrame(loop)
     }
     frameId = requestAnimationFrame(loop)
@@ -43,7 +70,21 @@ const Pool = () => {
   return (
     <div className='pool-game-container'>
       <h3 className='game-title'>8-Ball Pool</h3>
-      <canvas ref={canvasRef} tabIndex={0} id='canvas' width={TABLE_WIDTH} height={TABLE_HEIGHT}></canvas>
+      <canvas ref={canvasRef} id='canvas' width={TABLE_WIDTH} height={TABLE_HEIGHT}></canvas>
+      <div className='pool-tray' aria-label='Pocketed balls'>
+        <span>Pocketed:</span>
+        {pocketedBalls.length === 0 && <span className='pool-tray-empty'>none yet</span>}
+        {pocketedBalls.map(ball => (
+          <span
+            key={ball.number}
+            className={`pool-tray-ball ${ball.type}`}
+            style={{ '--ball-color': ball.color }}
+          >
+            {ball.number}
+          </span>
+        ))}
+      </div>
+      <p className='pool-instructions'>Aim with the mouse, then click and drag back to set power. Release to shoot.</p>
     </div>
   )
 }
