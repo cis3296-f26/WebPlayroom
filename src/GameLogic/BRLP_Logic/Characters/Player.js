@@ -6,11 +6,7 @@ export class Player extends Character {
         this.inventory = [];
         this.notebook = '';
     }
-
-    // shootCharacter(target) { super.shootCharacter(target); }
-
-    useItem(InventoryIndex){ }
-
+    
     viewNotebook() { }
     writeNotebook(text) { }
 

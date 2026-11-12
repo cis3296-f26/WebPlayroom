@@ -52,6 +52,7 @@ export class Shotgun {
     setDoubleDamage(value) { this.doubleDamage = value; }
     isDoubleDamage() { return this.doubleDamage; }
     removeBullet() { }
-    revealBullet() { }
+    revealBullet() {  return this.chamber[0]; }
+    
     reversePolarity() { }
 }
