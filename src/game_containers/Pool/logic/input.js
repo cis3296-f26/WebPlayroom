@@ -11,12 +11,14 @@ export function setupCueControls (canvas, cueBall, canShoot, onShoot) {
   }
   let dragStart = null // where the mouse was when the click started
 
-  // Converts a mouse position to canvas coordinates (still correct if CSS resizes the canvas)
+  // Converts a mouse position to canvas coordinates. clientLeft/clientTop are the border
+  // widths, so the rail border around the table doesn't shift the aim. Scaling keeps it
+  // correct even if CSS resizes the canvas.
   const getMousePos = (event) => {
     const rect = canvas.getBoundingClientRect()
     return new Vector(
-      (event.clientX - rect.left) * (canvas.width / rect.width),
-      (event.clientY - rect.top) * (canvas.height / rect.height)
+      (event.clientX - rect.left - canvas.clientLeft) * (canvas.width / canvas.clientWidth),
+      (event.clientY - rect.top - canvas.clientTop) * (canvas.height / canvas.clientHeight)
     )
   }
 

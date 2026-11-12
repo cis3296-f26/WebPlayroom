@@ -10,5 +10,6 @@ export default class Ball {
         this.number = number;
         this.type = type;
         this.radius = BALL_RADIUS
+        this.pocketed = false; // true once the ball drops into a pocket (out of play)
     }
 }

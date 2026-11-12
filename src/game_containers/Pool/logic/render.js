@@ -5,7 +5,9 @@ import {
     CUE_LENGTH,
     CUE_GAP,
     MAX_PULL_DISTANCE,
-    DEBUG_VECTORS
+    DEBUG_VECTORS,
+    POCKETS,
+    POCKET_RADIUS
 } from "../constants";
 
 export function drawBall (x, y, color, ctx) {
@@ -100,13 +102,27 @@ function drawPowerBar (ctx, cue) {
     ctx.restore();
 }
 
+// Black holes at the corners and middle of the long sides
+function drawPockets (ctx) {
+    ctx.save();
+    ctx.fillStyle = '#111';
+    for (const pocket of POCKETS) {
+        ctx.beginPath();
+        ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
 // showCue is true only when every ball has stopped, so the cue hides during a shot
 export function drawFrame(ctx, balls, cueBall, cue, showCue) {
     ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
 
+    drawPockets(ctx);
     if (showCue) drawAimLine(ctx, cueBall, cue);
 
     for(const ball of balls) {
+        if (ball.pocketed) continue; // out of play, so don't draw it on the table
         drawBall(ball.pos.x, ball.pos.y, ball.color, ctx);
         if (DEBUG_VECTORS) drawVector(ball.pos, ball.vel, 'yellow', ctx, 10)
     }

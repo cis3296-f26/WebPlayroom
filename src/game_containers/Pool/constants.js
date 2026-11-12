@@ -31,3 +31,14 @@ export const CUE_GAP = 4;             // space between the cue tip and the ball 
 
 // Debug
 export const DEBUG_VECTORS = false;   // true draws each ball's velocity as a yellow line
+
+// Pockets: four corners plus the middle of each long side
+export const POCKET_RADIUS = 20; // a ball whose center gets this close to a pocket's center drops in
+export const POCKETS = [
+  { x: 0, y: 0 },                        // top left
+  { x: TABLE_WIDTH / 2, y: 0 },           // top middle
+  { x: TABLE_WIDTH, y: 0 },              // top right
+  { x: 0, y: TABLE_HEIGHT },             // bottom left
+  { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT }, // bottom middle
+  { x: TABLE_WIDTH, y: TABLE_HEIGHT },   // bottom right
+];

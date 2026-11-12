@@ -7,15 +7,31 @@ import {
   WALL_RESTITUTION,
   TABLE_WIDTH,
   TABLE_HEIGHT,
-  MAX_SHOT_SPEED
+  TABLE_CENTER_Y,
+  CUE_START_X,
+  MAX_SHOT_SPEED,
+  POCKETS,
+  POCKET_RADIUS
 } from '../constants'
 
 // Advances the whole game by one fixed physics step (STEP_MS).
 // Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
+// Returns the balls that dropped into a pocket during this step.
 export function stepPhysics (balls) {
-  for (const b of balls) updateBall(b) // every ball gets friction + movement
-  handleCollisions(balls)
-  for (const b of balls) handleWalls(b) // last, so no ball ends the step outside the table
+  const onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+
+  for (const b of onTable) updateBall(b) // every ball gets friction + movement
+  handleCollisions(onTable)
+
+  // Pockets are checked before walls, so a ball heading into a pocket's mouth
+  // drops in instead of bouncing off the cushion next to it
+  const pocketedNow = onTable.filter(b => handlePockets(b))
+
+  for (const b of onTable) {
+    if (!b.pocketed) handleWalls(b) // last, so no ball ends the step outside the table
+  }
+
+  return pocketedNow
 }
 
 // Moves one ball for one step: friction, then position. Call on every ball.
@@ -32,6 +48,38 @@ export function shoot (cueBall, direction, power) {
 // True once friction has brought every ball to a full stop (shots are only allowed then)
 export function allBallsStopped (balls) {
   return balls.every(b => b.vel.x === 0 && b.vel.y === 0)
+}
+
+// If the ball is close enough to a pocket, it drops in: it stops and leaves play.
+// Returns true if it was pocketed.
+function handlePockets (ball) {
+  for (const pocket of POCKETS) {
+    if (ball.pos.subtract(pocket).magnitude() < POCKET_RADIUS) {
+      ball.pocketed = true
+      ball.vel = new Vector(0, 0)
+      ball.pos = new Vector(pocket.x, pocket.y)
+      return true
+    }
+  }
+  return false
+}
+
+// After a scratch (the cue ball was pocketed), put the cue ball back on its starting
+// spot. If another ball is sitting there, slide left until the spot is clear.
+export function respotCueBall (cueBall, balls) {
+  const isBlocked = (pos) => balls.some(b =>
+    b !== cueBall && !b.pocketed &&
+    b.pos.subtract(pos).magnitude() < b.radius + cueBall.radius
+  )
+
+  let spot = new Vector(CUE_START_X, TABLE_CENTER_Y)
+  while (isBlocked(spot) && spot.x > cueBall.radius * 2) {
+    spot = spot.subtract(new Vector(cueBall.radius, 0))
+  }
+
+  cueBall.pos = spot
+  cueBall.vel = new Vector(0, 0)
+  cueBall.pocketed = false
 }
 
 // Shrink velocity a little every frame; stop once the ball is barely moving
