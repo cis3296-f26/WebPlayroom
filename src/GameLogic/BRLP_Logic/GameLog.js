@@ -1,61 +1,42 @@
-class GameLog {
-  constructor() {
-    if (GameLog.instance) { return GameLog.instance; }
-    GameLog.instance = this;
-    this.listeners = {};
-  }
+export class GameLog {
+    events = [];
+    nextId = 1;
+    subscribers = new Set();
+    handlers = new Map();
 
-  //registeres a listener for a speciific event type
-  //eventType: name of event e.g. SHOOT
-  //callback: function to execute when event triggers
-  on(eventType, callback) {
-    if (!this.listeners[eventType]) { this.listeners[eventType] = []; }
+    emit(type, data = {}) {
+        if (typeof type !== 'string' || type === '') {
+            console.error('[GameLog] emit(type, data): type must be a non-empty string, got', type);
+            return null;
+        }
+        const event = { ...data, id: this.nextId++, type };
 
-    this.listeners[eventType].push(callback);
-    console.log(`[GameLog] Listener registered for: ${eventType}`);
-  }
+        this.events = [...this.events, event];
 
-  //unregisters a listener
-  off(eventType, callback) {
-    if (!this.listeners[eventType]) { return; }
-
-    this.listeners[eventType] = this.listeners[eventType].filter(
-      (listener) => listener !== callback
-    );
-    console.log(`[GameLog] Listener unregistered for: ${eventType}`);
-  }
-
-  //broadcasts an event to all subscribers
-  emit(payload) {
-    if (!payload || typeof payload.type !== 'string') {
-      console.error("[GameLog Error] Emit failed: Payload must contain a 'type' string.");
-      return;
+        this.handlers.get(type)?.forEach((fn) => this.#safely(fn, event));
+        this.subscribers.forEach((fn) => this.#safely(fn));
+        return event;
     }
 
-    const eventType = payload.type;
-    const listeners = this.listeners[eventType];
+    getEvents = () => this.events;
 
-    if (!listeners || listeners.length === 0) {
-      console.warn(`[GameLog] No listeners registered for: ${eventType}`);
-      return;
+    subscribe = (listener) => {
+        this.subscribers.add(listener);
+        return () => this.subscribers.delete(listener);
+    };
+
+    on(type, handler) {
+        if (!this.handlers.has(type)) this.handlers.set(type, new Set());
+        this.handlers.get(type).add(handler);
+        return () => this.off(type, handler);
     }
 
-    console.log(`\n--- [GAME LOG EVENT] ${eventType} ---`);
-    listeners.forEach((callback, index) => {
-      try {
-        callback(payload);
-      } catch (error) {
-        console.error(`[GameLog Error] Listener ${index} failed to process ${eventType}`, error);
-      }
-    });
-  }
+    off(type, handler) {
+        this.handlers.get(type)?.delete(handler);
+    }
 
-  static getInstance(){
-    if(!GameLog.instance) { GameLog.instance = new GameLog(); }
-    return GameLog.instance;
-    
-  }
+    #safely(fn, ...args) {
+        try { fn(...args); }
+        catch (error) { console.error('[GameLog] a listener threw:', error); }
+    }
 }
-
-const gameLog = new GameLog();
-export default gameLog;

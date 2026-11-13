@@ -6,6 +6,8 @@ export class Character {
         this.maxHealth = maxHealth;
         this.health = maxHealth;
         this.inventory = [];
+        this.helmet = false;        
+        this.handcuffed = false; 
     }
 
     get isDead() { return this.health <= 0; }

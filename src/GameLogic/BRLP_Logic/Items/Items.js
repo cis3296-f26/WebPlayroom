@@ -20,6 +20,7 @@ Game loop item
 
 import { Item } from '../Interface/Item.js';
 
+//Shotgun related items
 export class MagnifyingGlass extends Item {
     constructor() {
         super('magnifying_glass', 'Magnifying glass', 'Reveals the current bullet in the chamber');
@@ -85,7 +86,7 @@ export class Beer extends Item {
     }
 }
 
-//
+// General Items
 
 export class Adrenaline extends Item {
     constructor() {
@@ -168,7 +169,7 @@ export class Cigarettes extends Item {
     }
 }
 
-// ---------- Game loop ----------
+//Game Loop
 
 export class Handcuffs extends Item {
     constructor() {
@@ -199,7 +200,6 @@ export class Handcuffs extends Item {
 //     }
 // }
 
-// Everything that can be dealt to a player. Add a new item class above, then list it here.
 export const ITEM_POOL = [
     MagnifyingGlass, Polarizer, Helmet, Saw, Beer,
     Adrenaline, Duplicator, BurnerPhone, Cigarettes, Handcuffs,

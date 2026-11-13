@@ -42,14 +42,13 @@ export class BuckshotGame {
 
         const reason = item.blockedReason(this, user, args);
         if (reason) {
-            // Tell the UI too, so it can show the message (a refused item is NOT consumed).
             this.log.emit('ACTION_REJECTED', { by: user.id, item: item.id, itemName: item.name, reason });
             return { valid: false, reason };
         }
 
         this.log.emit('ITEM_USED', { by: user.id, item: item.id, itemName: item.name });
         item.useItem(this, user, args);
-        user.removeItem(item);   // by identity: Adrenaline/Duplicator may have changed the list indices
+        user.removeItem(item);
         return { valid: true };
     }
 
