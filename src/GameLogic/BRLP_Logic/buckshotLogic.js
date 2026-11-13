@@ -4,6 +4,7 @@ import { Player } from './Characters/Player.js';
 import { Dealer } from './Characters/Dealer.js';
 import { randomItem } from './Items/Items.js';
 
+const ITEMS_PER_RELOAD = 2;
 
 export class BuckshotGame {
     constructor(log = new GameLog()) {
@@ -58,16 +59,12 @@ export class BuckshotGame {
 
         let target = aimedAt;
 
-        // Helmet: only matters when shooting yourself, and only if the shell is live.
-        // We have to peek BEFORE firing, because firing is what applies the damage.
-        // A blank does nothing, so the helmet stays on until it actually bounces something.
         if (aimedAt === shooter && shooter.helmet && this.shotgun.revealBullet() === 'live') {
             shooter.helmet = false;
             target = this.opponentOf(shooter);
             this.log.emit('HELMET_BOUNCE', { by: shooter.id, target: target.id });
         }
 
-        // shooter.shootCharacter -> shotgun.fireBullet, which emits SHOT_FIRED / DAMAGE.
         const shell = shooter.shootCharacter(target, this.shotgun);
         this.afterShot(shooter, target, shell);
         return { ok: true };
@@ -87,7 +84,6 @@ export class BuckshotGame {
             return;
         }
 
-        // Shooting yourself with a blank keeps your turn; anything else passes it.
         const keepsTurn = target === shooter && shell === 'blank';
         if (!keepsTurn) this.passTurn();
 
@@ -112,7 +108,6 @@ export class BuckshotGame {
         this.dealItems();
     }
 
-    // Called after every shot AND after Beer: the chamber must never be empty during a turn.
     reloadIfEmpty() { if (this.shotgun.getBulletCount() === 0) this.reload(); }
 
     dealItems() {
@@ -120,13 +115,13 @@ export class BuckshotGame {
             const dealt = [];
             for (let i = 0; i < ITEMS_PER_RELOAD; i++) {
                 const item = randomItem();
-                if (character.addItem(item)) dealt.push(item.describe());   // addItem is false when full
+                if (character.addItem(item)) dealt.push(item.describe());
             }
             if (dealt.length > 0) this.log.emit('ITEMS_DEALT', { target: character.id, items: dealt });
         }
     }
 
-    // ---------- lookups ----------
+    // ----------------------------------------
 
     getCharacter(id) {
         if (id === 'player') return this.player;
@@ -138,7 +133,6 @@ export class BuckshotGame {
         return character === this.player ? this.dealer : this.player;
     }
 
-    // Plain-data snapshot for the UI. React calls this on every render.
     getState() {
         const side = (c) => ({
             health: c.health,
