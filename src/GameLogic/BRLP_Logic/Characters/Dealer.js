@@ -15,11 +15,6 @@ export class Dealer extends Character {
         return live / (live + blank) < 0.5 ? 'self' : 'opponent';
     }
 
-    // shootCharacter(target)  { super.shootCharacter(target); }
-
-    useItem(InventoryIndex) { }
-
-
     findBestMoves(){ }
     determineMoveset() { }
     executeMoveset() { }

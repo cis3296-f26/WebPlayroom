@@ -1,5 +1,8 @@
-import { useRef, useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { BuckshotGame } from '../../GameLogic/BRLP_Logic/buckshotLogic.js';
+
+const LOG_DELAY_MS = 500;      
+const DEALER_DELAY_MS = 600;
 
 function createGame() {
     const game = new BuckshotGame();
@@ -10,19 +13,36 @@ function createGame() {
 export function useBuckshotGame() {
     const [game, setGame] = useState(createGame);
 
-    // Re-render whenever the game emits a new log event.
     const events = useSyncExternalStore(game.log.subscribe, game.log.getEvents);
 
-    // Dealer moves automatically after a short pause (also repeats if the dealer keeps the turn).
+    //log buffer
+    const [shown, setShown] = useState(0);
     useEffect(() => {
-        if (game.turn === 'dealer' && !game.winner) {
-            const timer = setTimeout(() => game.dealerTurn(), 900);
+        if (shown >= events.length) return;
+        const timer = setTimeout(() => setShown(shown + 1), LOG_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, [shown, events.length]);
+
+    const visibleEvents = events.slice(0, shown);
+    const busy = shown < events.length;
+
+    useEffect(() => {
+        if (game.turn === 'dealer' && !game.winner && !busy) {
+            const timer = setTimeout(() => game.dealerTurn(), DEALER_DELAY_MS);
             return () => clearTimeout(timer);
         }
-    }, [game, events]);
+    }, [game, events, busy]);
 
-    const shoot = useCallback((choice) => game.playerTurn(choice), [game]);
-    const newGame = useCallback(() => setGame(createGame()), []);
+    const act = useCallback((action) => game.determineAction('player', action), [game]);
 
-    return { events, state: game.getState(), shoot, newGame };
+    const shoot = useCallback((target) => act({ type: 'SHOOT', target }), [act]);
+
+    const playItem = useCallback((index, targetIndex) => act({ type: 'USE_ITEM', index, targetIndex }), [act]);
+
+    const newGame = useCallback(() => {
+        setGame(createGame());
+        setShown(0); 
+    }, []);
+
+    return { events: visibleEvents, busy, state: game.getState(), act, shoot, playItem, newGame };
 }

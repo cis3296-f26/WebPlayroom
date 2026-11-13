@@ -6,14 +6,27 @@ export class Character {
         this.maxHealth = maxHealth;
         this.health = maxHealth;
         this.inventory = [];
+        this.helmet = false;        
+        this.handcuffed = false; 
     }
 
     get isDead() { return this.health <= 0; }
 
     takeDamage(amount) { this.health = Math.max(0, this.health - amount); }
+    heal(amount) { this.health = Math.min(this.maxHealth, this.health + amount); }
 
     shootCharacter(target, shotgun) { return shotgun.fireBullet(this, target);}
 
-    useItem(inventoryIndex){ }
+    addItem(item) {
+        if (this.inventory.length >= MAX_ITEMS) return false;
+        this.inventory.push(item);
+        return true;
+    }
 
+    removeItem(item) {
+        const i = this.inventory.indexOf(item);
+        if (i === -1) return false;
+        this.inventory.splice(i, 1);
+        return true;
+    }
 }

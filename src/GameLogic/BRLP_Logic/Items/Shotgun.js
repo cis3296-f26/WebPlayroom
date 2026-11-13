@@ -48,10 +48,17 @@ export class Shotgun {
         return { live, blank: this.chamber.length - live };
     }
 
-    // Item stubs for later
+
     setDoubleDamage(value) { this.doubleDamage = value; }
     isDoubleDamage() { return this.doubleDamage; }
-    removeBullet() { }
-    revealBullet() { }
-    reversePolarity() { }
+
+    revealBullet(index = 0) { return this.chamber[index]; }
+
+    removeBullet() { return this.chamber.shift(); }
+
+    reversePolarity() {
+        if (this.chamber.length === 0) return;
+        this.chamber[0] = this.chamber[0] === 'live' ? 'blank' : 'live';
+    }
+
 }
