@@ -10,13 +10,48 @@ import {
     POCKET_RADIUS
 } from "../constants";
 
-export function drawBall (x, y, color, ctx) {
+// Draws one ball: solids are filled with their color, stripes are white with a colored
+// band through the middle, and every ball except the cue ball gets its number.
+export function drawBall (ctx, ball) {
+    const { x, y } = ball.pos;
+    const r = BALL_RADIUS;
+
+    ctx.save();
+
+    // Base circle: stripes start white, everything else starts in its own color
     ctx.beginPath();
-    ctx.arc(x, y, BALL_RADIUS, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = ball.type === 'stripe' ? 'white' : ball.color;
+    ctx.fill();
+
+    if (ball.type === 'stripe') {
+        // clip() limits drawing to the ball's circle, so the band's square ends are cut
+        // off at the ball's edge instead of sticking out
+        ctx.clip();
+        ctx.fillStyle = ball.color;
+        ctx.fillRect(x - r, y - r * 0.55, r * 2, r * 1.1);
+    }
+
+    if (ball.type !== 'cue') {
+        // Small white circle with the number, like a real ball
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.55, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        ctx.fillStyle = 'black';
+        ctx.font = `bold ${ball.number >= 10 ? 7 : 8}px sans-serif`; // two digits need a smaller font
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(ball.number), x, y + 0.5);
+    }
+
+    ctx.restore(); // removes the clip so the outline and later drawings aren't cut off
+
+    ctx.beginPath(); // outline
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -123,7 +158,7 @@ export function drawFrame(ctx, balls, cueBall, cue, showCue) {
 
     for(const ball of balls) {
         if (ball.pocketed) continue; // out of play, so don't draw it on the table
-        drawBall(ball.pos.x, ball.pos.y, ball.color, ctx);
+        drawBall(ctx, ball);
         if (DEBUG_VECTORS) drawVector(ball.pos, ball.vel, 'yellow', ctx, 10)
     }
 
