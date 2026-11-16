@@ -11,33 +11,38 @@ import {
   CUE_START_X,
   MAX_SHOT_SPEED,
   POCKETS,
-  POCKET_RADIUS
+  POCKET_RADIUS,
+  SUBSTEPS,
+  ROLLING_FRICTION
 } from '../constants'
 
 // Advances the whole game by one fixed physics step (STEP_MS).
 // Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
 // Returns the balls that dropped into a pocket during this step.
 export function stepPhysics (balls) {
-  const onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+  let onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+  const pocketedNow = []
 
-  for (const b of onTable) updateBall(b) // every ball gets friction + movement
-  handleCollisions(onTable)
+  for (const b of onTable) applyFriction(b) // friction once per step, same as before substeps
 
-  // Pockets are checked before walls, so a ball heading into a pocket's mouth
-  // drops in instead of bouncing off the cushion next to it
-  const pocketedNow = onTable.filter(b => handlePockets(b))
+  // Substeps: move each ball 1/SUBSTEPS of the way, then check for hits, several times
+  // per step. A fast ball then never jumps farther than a ball's width between checks,
+  // so it can't pass straight through another ball.
+  for (let s = 0; s < SUBSTEPS; s++) {
+    for (const b of onTable) b.pos = b.pos.add(b.vel.multiply(1 / SUBSTEPS))
+    handleCollisions(onTable)
 
-  for (const b of onTable) {
-    if (!b.pocketed) handleWalls(b) // last, so no ball ends the step outside the table
+    // Pockets are checked before walls, so a ball heading into a pocket's mouth
+    // drops in instead of bouncing off the cushion next to it
+    for (const b of onTable) {
+      if (handlePockets(b)) pocketedNow.push(b)
+    }
+    onTable = onTable.filter(b => !b.pocketed)
+
+    for (const b of onTable) handleWalls(b) // last, so no ball ends a substep outside the table
   }
 
   return pocketedNow
-}
-
-// Moves one ball for one step: friction, then position. Call on every ball.
-export function updateBall (ball) {
-  applyFriction(ball)
-  updatePosition(ball)
 }
 
 // Strikes the cue ball. power is 0 to 1 (how far the cue was pulled back).
@@ -82,15 +87,18 @@ export function respotCueBall (cueBall, balls) {
   cueBall.pocketed = false
 }
 
-// Shrink velocity a little every frame; stop once the ball is barely moving
+// Slow a ball down for one step, like felt does: a small percentage of its speed (drag)
+// plus a fixed amount (rolling resistance). The fixed part makes slow balls stop firmly
+// instead of creeping, while fast balls keep most of their speed and travel farther.
 function applyFriction (ball) {
-  ball.vel = ball.vel.multiply(FRICTION)
+  const speed = ball.vel.magnitude()
+  const newSpeed = speed * FRICTION - ROLLING_FRICTION
 
-  if (ball.vel.magnitude() < MIN_SPEED) ball.vel = new Vector(0, 0)
-}
-
-function updatePosition (ball) {
-  ball.pos = ball.pos.add(ball.vel)
+  if (newSpeed < MIN_SPEED) {
+    ball.vel = new Vector(0, 0)
+    return
+  }
+  ball.vel = ball.vel.multiply(newSpeed / speed) // same direction, new speed
 }
 
 // Keeps a ball on the table. If it has crossed an edge, put it back against that
