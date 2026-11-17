@@ -19,7 +19,9 @@ import {
 // Advances the whole game by one fixed physics step (STEP_MS).
 // Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
 // Returns the balls that dropped into a pocket during this step.
-export function stepPhysics (balls) {
+// If a shot record is passed (from createShotEvents in rules.js), this also notes the first
+// ball the cue ball hits and every ball that drops, so the rules can judge the shot.
+export function stepPhysics (balls, shot = null) {
   let onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
   const pocketedNow = []
 
@@ -30,12 +32,15 @@ export function stepPhysics (balls) {
   // so it can't pass straight through another ball.
   for (let s = 0; s < SUBSTEPS; s++) {
     for (const b of onTable) b.pos = b.pos.add(b.vel.multiply(1 / SUBSTEPS))
-    handleCollisions(onTable)
+    handleCollisions(onTable, shot)
 
     // Pockets are checked before walls, so a ball heading into a pocket's mouth
     // drops in instead of bouncing off the cushion next to it
     for (const b of onTable) {
-      if (handlePockets(b)) pocketedNow.push(b)
+      if (handlePockets(b)) {
+        pocketedNow.push(b)
+        if (shot) shot.pocketed.push(b.number)
+      }
     }
     onTable = onTable.filter(b => !b.pocketed)
 
@@ -135,7 +140,7 @@ export function areColliding (a, b) {
   return distance <= a.radius + b.radius
 }
 
-export function handleCollisions (balls) {
+export function handleCollisions (balls, shot = null) {
   // Repeat because fixing one pair can push a ball into another (common in the rack)
   for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
     const contacts = findContacts(balls)
@@ -144,8 +149,19 @@ export function handleCollisions (balls) {
     // Resolve touching pairs in a random order. Whichever pair goes first gets the
     // most energy, so a fixed order always favored the same side of the rack.
     shuffle(contacts)
-    for (const [a, b] of contacts) resolveCollision(a, b)
+    for (const [a, b] of contacts) {
+      const bounced = resolveCollision(a, b)
+      if (bounced && shot) recordFirstHit(shot, a, b)
+    }
   }
+}
+
+// The rules need to know which ball the cue ball touched first. Only real hits count
+// (balls moving into each other), not balls that are just resting against each other.
+function recordFirstHit (shot, a, b) {
+  if (shot.firstHit !== null) return
+  if (a.type === 'cue') shot.firstHit = b.number
+  else if (b.type === 'cue') shot.firstHit = a.number
 }
 
 // Every pair of balls that is currently touching, as [a, b] arrays
@@ -176,7 +192,7 @@ function resolveCollision (a, b) {
   const normal = distance === 0 ? new Vector(1, 0) : offset.normalize()
 
   separateBalls(a, b, normal, distance)
-  bounceBalls(a, b, normal)
+  return bounceBalls(a, b, normal) // true if they actually hit (not just touching)
 }
 
 // 1. Push the balls apart so they're just touching instead of overlapping
@@ -194,7 +210,7 @@ function bounceBalls (a, b, normal) {
   const closingSpeed = Vector.dot(a.vel.subtract(b.vel), normal)
 
   // Negative or zero means they're already moving apart, so don't bounce again
-  if (closingSpeed <= 0) return
+  if (closingSpeed <= 0) return false
 
   // Equal-mass balls: a loses that speed along the normal and b gains it.
   // RESTITUTION < 1 makes the hit lose a little energy, like real balls.
@@ -202,4 +218,5 @@ function bounceBalls (a, b, normal) {
 
   a.vel = a.vel.subtract(impulse)
   b.vel = b.vel.add(impulse)
+  return true
 }

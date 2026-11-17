@@ -36,3 +36,14 @@ export function createStartingLineup () {
     
     return balls
 }
+
+// Puts the same Ball objects back in the starting rack (used for a re-rack).
+// Reusing the objects matters: other code, like the cue controls, holds on to the cue ball.
+export function resetToStartingLineup (balls) {
+    const fresh = createStartingLineup();
+    balls.forEach((ball, i) => {
+        ball.pos = fresh[i].pos;
+        ball.vel = fresh[i].vel;
+        ball.pocketed = false;
+    });
+}

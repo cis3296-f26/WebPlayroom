@@ -61,3 +61,10 @@ div.pool-game-container {
 .pool-tray-ball.stripe {
     background: linear-gradient(white 25%, var(--ball-color) 25% 75%, white 75%);
 }
+
+/* Whose turn it is and what just happened (Step 5 turns this into a full scoreboard) */
+.pool-status {
+    min-height: 1.5em;
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
