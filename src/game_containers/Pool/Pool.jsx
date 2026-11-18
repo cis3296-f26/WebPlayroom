@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import './Pool.css'
 import { drawFrame } from './logic/render'
-import { stepPhysics, shoot, allBallsStopped, respotCueBall } from './logic/physics'
+import { stepPhysics, shoot, allBallsStopped, respotCueBall, isValidCueSpot } from './logic/physics'
 import { setupCueControls } from './logic/input'
 import { createStartingLineup, resetToStartingLineup } from './logic/startingLineup'
 import { createGame, createShotEvents, evaluateShot } from './logic/rules'
@@ -32,9 +32,15 @@ const Pool = () => {
     const canShoot = () =>
       allBallsStopped(balls) && !cueBall.pocketed && shot === null && gameState.winner === null
 
-    const { cue, cleanup } = setupCueControls(canvas, cueBall, canShoot, (direction, power) => {
-      shot = createShotEvents() // start recording this shot
-      shoot(cueBall, direction, power)
+    const { cue, cleanup } = setupCueControls(canvas, cueBall, {
+      canShoot,
+      onShoot: (direction, power) => {
+        shot = createShotEvents() // start recording this shot
+        gameState = { ...gameState, ballInHand: null } // ball in hand ends once you shoot
+        shoot(cueBall, direction, power)
+      },
+      ballInHand: () => gameState.ballInHand,
+      isValidSpot: (pos) => isValidCueSpot(pos, cueBall, balls, gameState.ballInHand)
     })
 
     let frameId
@@ -74,11 +80,11 @@ const Pool = () => {
         setGame(gameState) // only now, after a shot, does React re-render
       }
 
-      // Scratch: once everything stops, the cue ball comes back to its starting spot
-      // (Step 4 replaces this with ball in hand)
+      // Scratch: once everything stops, the cue ball comes back to its starting spot.
+      // The rules have already given the next player ball in hand, so they can move it from there.
       if (cueBall.pocketed && allBallsStopped(balls)) respotCueBall(cueBall, balls)
 
-      drawFrame(ctx, balls, cueBall, cue, canShoot())
+      drawFrame(ctx, balls, cueBall, cue, canShoot(), gameState.ballInHand)
       frameId = requestAnimationFrame(loop)
     }
     frameId = requestAnimationFrame(loop)

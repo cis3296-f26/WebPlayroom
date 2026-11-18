@@ -19,6 +19,7 @@ describe('Pool rules: setup', () => {
     expect(game.isBreak).toBe(true)
     expect(game.groups).toEqual({ 1: null, 2: null })
     expect(game.winner).toBeNull()
+    expect(game.ballInHand).toBe('kitchen') // the breaker may place the cue ball behind the head string
   })
 
   it('knows which group each ball belongs to', () => {
@@ -49,19 +50,20 @@ describe('Pool rules: the break', () => {
   it('passes the turn if nothing goes in', () => {
     const game = evaluateShot(createGame(), { firstHit: 1, pocketed: [] }, tableWithout())
     expect(game.currentPlayer).toBe(2)
-    expect(game.ballInHand).toBe(false)
+    expect(game.ballInHand).toBeNull()
   })
 
   it('gives the other player ball in hand after a scratch on the break', () => {
     const game = evaluateShot(createGame(), { firstHit: 1, pocketed: [0] }, tableWithout())
     expect(game.currentPlayer).toBe(2)
-    expect(game.ballInHand).toBe(true)
+    expect(game.ballInHand).toBe('table')
   })
 
   it('re-racks with the same breaker if the 8 goes in on the break', () => {
     const game = evaluateShot(createGame(), { firstHit: 1, pocketed: [8] }, tableWithout(8))
     expect(game.rerack).toBe(true)
     expect(game.isBreak).toBe(true)
+    expect(game.ballInHand).toBe('kitchen')
     expect(game.currentPlayer).toBe(1)
     expect(game.winner).toBeNull()
   })
@@ -88,8 +90,8 @@ describe('Pool rules: choosing groups on an open table', () => {
   })
 
   it('allows hitting either group first, but not the 8', () => {
-    expect(evaluateShot(openTable(), { firstHit: 13, pocketed: [] }, tableWithout()).ballInHand).toBe(false)
-    expect(evaluateShot(openTable(), { firstHit: 8, pocketed: [] }, tableWithout()).ballInHand).toBe(true)
+    expect(evaluateShot(openTable(), { firstHit: 13, pocketed: [] }, tableWithout()).ballInHand).toBeNull()
+    expect(evaluateShot(openTable(), { firstHit: 8, pocketed: [] }, tableWithout()).ballInHand).toBe('table')
   })
 })
 
@@ -97,25 +99,32 @@ describe('Pool rules: turns', () => {
   it('keeps the turn after sinking your own ball', () => {
     const game = evaluateShot(midGame(), { firstHit: 4, pocketed: [4] }, tableWithout(4))
     expect(game.currentPlayer).toBe(1)
+    expect(game.ballInHand).toBeNull()
+  })
+
+  it('ends ball in hand after a legal shot', () => {
+    const afterFoul = { ...midGame(), ballInHand: 'table' }
+    const game = evaluateShot(afterFoul, { firstHit: 4, pocketed: [] }, tableWithout())
+    expect(game.ballInHand).toBeNull()
   })
 
   it('passes the turn after a miss', () => {
     const game = evaluateShot(midGame(), { firstHit: 4, pocketed: [] }, tableWithout())
     expect(game.currentPlayer).toBe(2)
-    expect(game.ballInHand).toBe(false)
+    expect(game.ballInHand).toBeNull()
   })
 
   it('passes the turn (without a foul) when only the opponent’s ball goes in', () => {
     const game = evaluateShot(midGame(), { firstHit: 4, pocketed: [12] }, tableWithout(12))
     expect(game.currentPlayer).toBe(2)
-    expect(game.ballInHand).toBe(false)
+    expect(game.ballInHand).toBeNull()
   })
 })
 
 describe('Pool rules: fouls', () => {
   const expectFoul = (game) => {
     expect(game.currentPlayer).toBe(2)
-    expect(game.ballInHand).toBe(true)
+    expect(game.ballInHand).toBe('table')
     expect(game.message).toMatch(/Foul/)
   }
 

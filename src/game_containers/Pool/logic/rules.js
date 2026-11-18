@@ -26,10 +26,13 @@ export function createGame (breaker = 1) {
     currentPlayer: breaker,
     groups: { 1: null, 2: null }, // 'solid' or 'stripe' once assigned
     isBreak: true,                // the next shot is the break
-    ballInHand: false,            // true after a foul: the current player may place the cue ball
+    // Where the current player may place the cue ball before shooting:
+    //   'kitchen' - behind the head string (the break), 'table' - anywhere (after a foul),
+    //   null      - nowhere, the cue ball stays where it is
+    ballInHand: 'kitchen',
     winner: null,                 // 1 or 2 once the game is over
     rerack: false,                // true if the 8 went in on the break and the table must be reset
-    message: `Player ${breaker} to break.`
+    message: `Player ${breaker} to break. You can drag the cue ball anywhere behind the line first.`
   }
 }
 
@@ -61,7 +64,7 @@ export function evaluateShot (game, shot, onTable) {
 
   const foul = findFoul(game, shot, myGroup, onTheEight, scratched)
 
-  const next = { ...game, groups: { ...game.groups }, isBreak: false, ballInHand: false, rerack: false }
+  const next = { ...game, groups: { ...game.groups }, isBreak: false, ballInHand: null, rerack: false }
 
   // --- The 8 ball decides the game (or forces a re-rack on the break) ---
   if (eightIn) {
@@ -80,8 +83,8 @@ export function evaluateShot (game, shot, onTable) {
     return {
       ...next,
       currentPlayer: opponent,
-      ballInHand: true,
-      message: `Foul: ${foul}. Player ${opponent} has ball in hand.`
+      ballInHand: 'table',
+      message: `Foul: ${foul}. Player ${opponent} has ball in hand: drag the cue ball anywhere, then shoot.`
     }
   }
 

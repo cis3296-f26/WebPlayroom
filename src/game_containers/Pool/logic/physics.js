@@ -9,6 +9,7 @@ import {
   TABLE_HEIGHT,
   TABLE_CENTER_Y,
   CUE_START_X,
+  HEAD_STRING_X,
   MAX_SHOT_SPEED,
   POCKETS,
   POCKET_RADIUS,
@@ -72,6 +73,27 @@ function handlePockets (ball) {
     }
   }
   return false
+}
+
+// Ball in hand: can the cue ball be placed at `pos`?
+//   area 'kitchen' - only at or behind the head string (used for the break)
+//   area 'table'   - anywhere on the table
+// The spot must be fully on the table, clear of every other ball, and not in a pocket's
+// opening (with a ball's width of margin, so it can't drop in on its own).
+export function isValidCueSpot (pos, cueBall, balls, area) {
+  const r = cueBall.radius
+
+  const onTable = pos.x >= r && pos.x <= TABLE_WIDTH - r && pos.y >= r && pos.y <= TABLE_HEIGHT - r
+  if (!onTable) return false
+
+  if (area === 'kitchen' && pos.x > HEAD_STRING_X) return false
+
+  const inPocket = POCKETS.some(pocket => pos.subtract(pocket).magnitude() < POCKET_RADIUS + r)
+  if (inPocket) return false
+
+  return balls.every(b =>
+    b === cueBall || b.pocketed || b.pos.subtract(pos).magnitude() >= b.radius + r
+  )
 }
 
 // After a scratch (the cue ball was pocketed), put the cue ball back on its starting

@@ -10,6 +10,7 @@ export const TABLE_HEIGHT = 500;
 export const TABLE_CENTER_Y = TABLE_HEIGHT / 2  // 250
 export const RACK_APEX_X = TABLE_WIDTH * 0.75   // the "foot spot," where the 1 ball goes
 export const CUE_START_X = TABLE_WIDTH * 0.25 
+export const HEAD_STRING_X = TABLE_WIDTH * 0.25  // on the break, the cue ball must be placed at or behind (left of) this line
 
 // Timing
 export const STEP_MS = 1000 / 60; // one physics step = 1/60 of a second, on every screen
