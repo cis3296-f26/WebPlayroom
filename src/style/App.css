@@ -54,6 +54,21 @@
   cursor: grabbing;
 }
 
+.connect4-theme .hub-links {
+  background-color: #1565c0;
+  background-size: 320px 320px;
+  color: white;
+}
+
+.connect4-theme .game-button {
+  color: #222;
+}
+
+.connect4-theme .hub-links > div {
+  background-color: #1565c0;
+  padding: 12px;
+}
+
 /*Style for snake game container */
 .snake-game-container {
   display: flex;

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
-function GameHub() {
+function GameHub({ connect4Theme = false }) {
   const board = useRef(null)
   const drag = useRef(null)
 
@@ -9,7 +9,22 @@ function GameHub() {
     const view = board.current
     view.scrollLeft = view.clientWidth
     view.scrollTop = view.clientHeight
-  }, [])
+
+    if (connect4Theme) {
+      const colors = ['#ed3434', '#ffda35']
+      const dots = []
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const color = colors[Math.floor(Math.random() * 2)]
+          dots.push(`radial-gradient(circle at ${col * 40 + 20}px ${row * 40 + 20}px, ${color} 8px, transparent 9px)`)
+        }
+      }
+      view.querySelector('.hub-links').style.backgroundImage = dots.join(',')
+      view.querySelectorAll('.game-button').forEach(button => {
+        button.style.backgroundColor = colors[Math.floor(Math.random() * 2)]
+      })
+    }
+  }, [connect4Theme])
 
   function startDrag(event) {
     if (!event.isPrimary || event.button !== 0) return
@@ -42,7 +57,7 @@ function GameHub() {
 
   return (
     <div
-      className="game-container"
+      className={'game-container' + (connect4Theme ? ' connect4-theme' : '')}
       ref={board}
       onPointerDown={startDrag}
       onPointerMove={moveDrag}
