@@ -1,7 +1,8 @@
 import Ball from './Ball'
 import { BALL_RADIUS, RACK_APEX_X, CUE_START_X, TABLE_CENTER_Y } from '../constants';
 
-const BALL_COLORS = [
+// Index = ball number - 1. Exported so the scoreboard can draw matching ball icons.
+export const BALL_COLORS = [
     'yellow','blue','red','purple','orange','green','maroon', // solids
     'black',                                                  // 8 ball
     'yellow','blue','red','purple','orange','green','maroon'  // striped

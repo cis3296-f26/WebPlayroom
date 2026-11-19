@@ -5,6 +5,8 @@ import { stepPhysics, shoot, allBallsStopped, respotCueBall, isValidCueSpot } fr
 import { setupCueControls } from './logic/input'
 import { createStartingLineup, resetToStartingLineup } from './logic/startingLineup'
 import { createGame, createShotEvents, evaluateShot } from './logic/rules'
+import Scoreboard from './components/Scoreboard'
+import WinOverlay from './components/WinOverlay'
 import {
   TABLE_WIDTH,
   TABLE_HEIGHT,
@@ -14,8 +16,18 @@ import {
 
 const Pool = () => {
   const canvasRef = useRef(null) 
-  const [pocketedBalls, setPocketedBalls] = useState([]) // object balls that have gone in, for the tray
+  const [pocketed, setPocketed] = useState([]) // numbers of the object balls that have gone in, for the scoreboard
   const [game, setGame] = useState(createGame) // copy of the rules state for the page to display
+  const [gameId, setGameId] = useState(0)      // bumping this restarts the game (see the effect below)
+
+  // New game / Play again: reset the page's copies of the state and bump gameId. Because
+  // gameId is in the effect's dependency list, React cleans up the old game loop and runs
+  // the effect again, which builds fresh balls and a fresh game.
+  const restart = () => {
+    setGame(createGame())
+    setPocketed([])
+    setGameId(id => id + 1)
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -63,7 +75,7 @@ const Pool = () => {
         // Only update React state when something actually went in (not every step)
         const objectBalls = pocketedNow.filter(b => b !== cueBall)
         if (objectBalls.length > 0) {
-          setPocketedBalls(prev => [...prev, ...objectBalls.map(b => ({ number: b.number, color: b.color, type: b.type }))])
+          setPocketed(prev => [...prev, ...objectBalls.map(b => b.number)])
         }
       }
 
@@ -75,7 +87,7 @@ const Pool = () => {
 
         if (gameState.rerack) { // the 8 went in on the break
           resetToStartingLineup(balls)
-          setPocketedBalls([])
+          setPocketed([])
         }
         setGame(gameState) // only now, after a shot, does React re-render
       }
@@ -93,27 +105,29 @@ const Pool = () => {
       cancelAnimationFrame(frameId)
       cleanup()
     }
-  }, [])
+  }, [gameId])
 
   return (
     <div className='pool-game-container'>
       <h3 className='game-title'>8-Ball Pool</h3>
+      <Scoreboard game={game} pocketed={pocketed} />
       <p className='pool-status' role='status'>{game.message}</p>
-      <canvas ref={canvasRef} id='canvas' width={TABLE_WIDTH} height={TABLE_HEIGHT}></canvas>
-      <div className='pool-tray' aria-label='Pocketed balls'>
-        <span>Pocketed:</span>
-        {pocketedBalls.length === 0 && <span className='pool-tray-empty'>none yet</span>}
-        {pocketedBalls.map(ball => (
-          <span
-            key={ball.number}
-            className={`pool-tray-ball ${ball.type}`}
-            style={{ '--ball-color': ball.color }}
-          >
-            {ball.number}
-          </span>
-        ))}
+
+      {/* The wrapper lets the win screen sit on top of the canvas */}
+      <div className='pool-table'>
+        <canvas ref={canvasRef} id='canvas' width={TABLE_WIDTH} height={TABLE_HEIGHT}></canvas>
+        {game.winner !== null && (
+          <WinOverlay winner={game.winner} message={game.message} onPlayAgain={restart} />
+        )}
       </div>
-      <p className='pool-instructions'>Aim with the mouse, then click and drag back to set power. Release to shoot.</p>
+
+      <div className='pool-controls'>
+        <p className='pool-instructions'>
+          Aim with the mouse, then click and drag back to set power. Release to shoot.
+          When the cue ball glows, you can drag it to move it.
+        </p>
+        <button className='game-button' onClick={restart}>New game</button>
+      </div>
     </div>
   )
 }
