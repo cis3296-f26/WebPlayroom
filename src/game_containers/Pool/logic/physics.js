@@ -9,35 +9,46 @@ import {
   TABLE_HEIGHT,
   TABLE_CENTER_Y,
   CUE_START_X,
+  HEAD_STRING_X,
   MAX_SHOT_SPEED,
   POCKETS,
-  POCKET_RADIUS
+  POCKET_RADIUS,
+  SUBSTEPS,
+  ROLLING_FRICTION
 } from '../constants'
 
 // Advances the whole game by one fixed physics step (STEP_MS).
 // Pool.jsx calls this a fixed number of times per second, no matter the screen's refresh rate.
 // Returns the balls that dropped into a pocket during this step.
-export function stepPhysics (balls) {
-  const onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+// If a shot record is passed (from createShotEvents in rules.js), this also notes the first
+// ball the cue ball hits and every ball that drops, so the rules can judge the shot.
+export function stepPhysics (balls, shot = null) {
+  let onTable = balls.filter(b => !b.pocketed) // pocketed balls are out of play
+  const pocketedNow = []
 
-  for (const b of onTable) updateBall(b) // every ball gets friction + movement
-  handleCollisions(onTable)
+  for (const b of onTable) applyFriction(b) // friction once per step, same as before substeps
 
-  // Pockets are checked before walls, so a ball heading into a pocket's mouth
-  // drops in instead of bouncing off the cushion next to it
-  const pocketedNow = onTable.filter(b => handlePockets(b))
+  // Substeps: move each ball 1/SUBSTEPS of the way, then check for hits, several times
+  // per step. A fast ball then never jumps farther than a ball's width between checks,
+  // so it can't pass straight through another ball.
+  for (let s = 0; s < SUBSTEPS; s++) {
+    for (const b of onTable) b.pos = b.pos.add(b.vel.multiply(1 / SUBSTEPS))
+    handleCollisions(onTable, shot)
 
-  for (const b of onTable) {
-    if (!b.pocketed) handleWalls(b) // last, so no ball ends the step outside the table
+    // Pockets are checked before walls, so a ball heading into a pocket's mouth
+    // drops in instead of bouncing off the cushion next to it
+    for (const b of onTable) {
+      if (handlePockets(b)) {
+        pocketedNow.push(b)
+        if (shot) shot.pocketed.push(b.number)
+      }
+    }
+    onTable = onTable.filter(b => !b.pocketed)
+
+    for (const b of onTable) handleWalls(b) // last, so no ball ends a substep outside the table
   }
 
   return pocketedNow
-}
-
-// Moves one ball for one step: friction, then position. Call on every ball.
-export function updateBall (ball) {
-  applyFriction(ball)
-  updatePosition(ball)
 }
 
 // Strikes the cue ball. power is 0 to 1 (how far the cue was pulled back).
@@ -64,6 +75,27 @@ function handlePockets (ball) {
   return false
 }
 
+// Ball in hand: can the cue ball be placed at `pos`?
+//   area 'kitchen' - only at or behind the head string (used for the break)
+//   area 'table'   - anywhere on the table
+// The spot must be fully on the table, clear of every other ball, and not in a pocket's
+// opening (with a ball's width of margin, so it can't drop in on its own).
+export function isValidCueSpot (pos, cueBall, balls, area) {
+  const r = cueBall.radius
+
+  const onTable = pos.x >= r && pos.x <= TABLE_WIDTH - r && pos.y >= r && pos.y <= TABLE_HEIGHT - r
+  if (!onTable) return false
+
+  if (area === 'kitchen' && pos.x > HEAD_STRING_X) return false
+
+  const inPocket = POCKETS.some(pocket => pos.subtract(pocket).magnitude() < POCKET_RADIUS + r)
+  if (inPocket) return false
+
+  return balls.every(b =>
+    b === cueBall || b.pocketed || b.pos.subtract(pos).magnitude() >= b.radius + r
+  )
+}
+
 // After a scratch (the cue ball was pocketed), put the cue ball back on its starting
 // spot. If another ball is sitting there, slide left until the spot is clear.
 export function respotCueBall (cueBall, balls) {
@@ -82,15 +114,18 @@ export function respotCueBall (cueBall, balls) {
   cueBall.pocketed = false
 }
 
-// Shrink velocity a little every frame; stop once the ball is barely moving
+// Slow a ball down for one step, like felt does: a small percentage of its speed (drag)
+// plus a fixed amount (rolling resistance). The fixed part makes slow balls stop firmly
+// instead of creeping, while fast balls keep most of their speed and travel farther.
 function applyFriction (ball) {
-  ball.vel = ball.vel.multiply(FRICTION)
+  const speed = ball.vel.magnitude()
+  const newSpeed = speed * FRICTION - ROLLING_FRICTION
 
-  if (ball.vel.magnitude() < MIN_SPEED) ball.vel = new Vector(0, 0)
-}
-
-function updatePosition (ball) {
-  ball.pos = ball.pos.add(ball.vel)
+  if (newSpeed < MIN_SPEED) {
+    ball.vel = new Vector(0, 0)
+    return
+  }
+  ball.vel = ball.vel.multiply(newSpeed / speed) // same direction, new speed
 }
 
 // Keeps a ball on the table. If it has crossed an edge, put it back against that
@@ -127,7 +162,7 @@ export function areColliding (a, b) {
   return distance <= a.radius + b.radius
 }
 
-export function handleCollisions (balls) {
+export function handleCollisions (balls, shot = null) {
   // Repeat because fixing one pair can push a ball into another (common in the rack)
   for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
     const contacts = findContacts(balls)
@@ -136,8 +171,19 @@ export function handleCollisions (balls) {
     // Resolve touching pairs in a random order. Whichever pair goes first gets the
     // most energy, so a fixed order always favored the same side of the rack.
     shuffle(contacts)
-    for (const [a, b] of contacts) resolveCollision(a, b)
+    for (const [a, b] of contacts) {
+      const bounced = resolveCollision(a, b)
+      if (bounced && shot) recordFirstHit(shot, a, b)
+    }
   }
+}
+
+// The rules need to know which ball the cue ball touched first. Only real hits count
+// (balls moving into each other), not balls that are just resting against each other.
+function recordFirstHit (shot, a, b) {
+  if (shot.firstHit !== null) return
+  if (a.type === 'cue') shot.firstHit = b.number
+  else if (b.type === 'cue') shot.firstHit = a.number
 }
 
 // Every pair of balls that is currently touching, as [a, b] arrays
@@ -168,7 +214,7 @@ function resolveCollision (a, b) {
   const normal = distance === 0 ? new Vector(1, 0) : offset.normalize()
 
   separateBalls(a, b, normal, distance)
-  bounceBalls(a, b, normal)
+  return bounceBalls(a, b, normal) // true if they actually hit (not just touching)
 }
 
 // 1. Push the balls apart so they're just touching instead of overlapping
@@ -186,7 +232,7 @@ function bounceBalls (a, b, normal) {
   const closingSpeed = Vector.dot(a.vel.subtract(b.vel), normal)
 
   // Negative or zero means they're already moving apart, so don't bounce again
-  if (closingSpeed <= 0) return
+  if (closingSpeed <= 0) return false
 
   // Equal-mass balls: a loses that speed along the normal and b gains it.
   // RESTITUTION < 1 makes the hit lose a little energy, like real balls.
@@ -194,4 +240,5 @@ function bounceBalls (a, b, normal) {
 
   a.vel = a.vel.subtract(impulse)
   b.vel = b.vel.add(impulse)
+  return true
 }

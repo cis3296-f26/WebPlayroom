@@ -25,39 +25,149 @@ div.pool-game-container {
 }
 
 .pool-instructions {
-    margin-top: 12px;
+    margin: 0;
     opacity: 0.85;
+    max-width: 640px;
 }
 
-/* Row of pocketed balls under the table */
-.pool-tray {
+/* What just happened, under the scoreboard */
+.pool-status {
+    min-height: 1.5em;
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
+
+/* ---------- Scoreboard ---------- */
+.pool-scoreboard {
+    display: flex;
+    gap: 16px;
+    margin: 4px 0 10px;
+}
+
+.pool-player {
+    width: 300px;
+    padding: 10px 14px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0.7; /* the player who isn't shooting is dimmed */
+    transition: opacity 0.2s, border-color 0.2s;
+}
+
+.pool-player.current,
+.pool-player.winner {
+    opacity: 1;
+    border-color: #ffd54f;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.pool-player-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
+
+.pool-player-group {
+    font-weight: normal;
+    opacity: 0.9;
+}
+
+.pool-player-balls {
     display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 28px;
-    margin-top: 12px;
+    justify-content: center;
+    gap: 4px;
+    min-height: 26px;
+    margin-top: 8px;
 }
 
-.pool-tray-empty {
-    opacity: 0.7;
+.pool-no-group {
+    font-size: 0.85rem;
     font-style: italic;
+    opacity: 0.8;
 }
 
-.pool-tray-ball {
+.pool-on-eight {
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+.pool-player-badge {
+    min-height: 1.2em;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #ffd54f;
+    font-weight: bold;
+}
+
+/* Small numbered ball: a white circle with the number, on the ball's color */
+.pool-ball-icon {
     display: inline-grid;
     place-items: center;
     width: 24px;
     height: 24px;
     border-radius: 50%;
     border: 1px solid black;
-    background: var(--ball-color);
-    color: white;
-    font-size: 0.7rem;
+    background: radial-gradient(circle, white 0 40%, var(--ball-color) 41%);
+    color: black;
+    font-size: 0.65rem;
     font-weight: bold;
-    text-shadow: 0 0 2px black;
 }
 
 /* Stripes: white top and bottom with a colored band through the middle */
-.pool-tray-ball.stripe {
-    background: linear-gradient(white 25%, var(--ball-color) 25% 75%, white 75%);
+.pool-ball-icon.stripe {
+    background:
+        radial-gradient(circle, white 0 40%, transparent 41%),
+        linear-gradient(white 22%, var(--ball-color) 22% 78%, white 78%);
+}
+
+.pool-ball-icon.sunk {
+    opacity: 0.25;
+}
+
+/* ---------- Table + win screen ---------- */
+.pool-table {
+    position: relative; /* lets the overlay be placed on top of the canvas */
+    display: inline-block;
+    line-height: 0;     /* removes the small gap under the canvas */
+}
+
+.pool-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: normal;
+    z-index: 10;
+}
+
+.pool-overlay-title {
+    margin: 0 0 8px;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.pool-overlay-message {
+    margin: 0 0 20px;
+    font-size: 1.1rem;
+}
+
+/* ---------- Under the table ---------- */
+.pool-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+/* game-button comes from App.css (made for links); these make it work as a button too */
+.pool-game-container .game-button {
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-weight: bold;
 }

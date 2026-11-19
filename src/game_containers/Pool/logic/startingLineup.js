@@ -1,7 +1,8 @@
 import Ball from './Ball'
 import { BALL_RADIUS, RACK_APEX_X, CUE_START_X, TABLE_CENTER_Y } from '../constants';
 
-const BALL_COLORS = [
+// Index = ball number - 1. Exported so the scoreboard can draw matching ball icons.
+export const BALL_COLORS = [
     'yellow','blue','red','purple','orange','green','maroon', // solids
     'black',                                                  // 8 ball
     'yellow','blue','red','purple','orange','green','maroon'  // striped
@@ -35,4 +36,15 @@ export function createStartingLineup () {
     })
     
     return balls
+}
+
+// Puts the same Ball objects back in the starting rack (used for a re-rack).
+// Reusing the objects matters: other code, like the cue controls, holds on to the cue ball.
+export function resetToStartingLineup (balls) {
+    const fresh = createStartingLineup();
+    balls.forEach((ball, i) => {
+        ball.pos = fresh[i].pos;
+        ball.vel = fresh[i].vel;
+        ball.pocketed = false;
+    });
 }

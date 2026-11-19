@@ -7,16 +7,52 @@ import {
     MAX_PULL_DISTANCE,
     DEBUG_VECTORS,
     POCKETS,
-    POCKET_RADIUS
+    POCKET_RADIUS,
+    HEAD_STRING_X
 } from "../constants";
 
-export function drawBall (x, y, color, ctx) {
+// Draws one ball: solids are filled with their color, stripes are white with a colored
+// band through the middle, and every ball except the cue ball gets its number.
+export function drawBall (ctx, ball) {
+    const { x, y } = ball.pos;
+    const r = BALL_RADIUS;
+
+    ctx.save();
+
+    // Base circle: stripes start white, everything else starts in its own color
     ctx.beginPath();
-    ctx.arc(x, y, BALL_RADIUS, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = ball.type === 'stripe' ? 'white' : ball.color;
+    ctx.fill();
+
+    if (ball.type === 'stripe') {
+        // clip() limits drawing to the ball's circle, so the band's square ends are cut
+        // off at the ball's edge instead of sticking out
+        ctx.clip();
+        ctx.fillStyle = ball.color;
+        ctx.fillRect(x - r, y - r * 0.55, r * 2, r * 1.1);
+    }
+
+    if (ball.type !== 'cue') {
+        // Small white circle with the number, like a real ball
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.55, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        ctx.fillStyle = 'black';
+        ctx.font = `bold ${ball.number >= 10 ? 7 : 8}px sans-serif`; // two digits need a smaller font
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(ball.number), x, y + 0.5);
+    }
+
+    ctx.restore(); // removes the clip so the outline and later drawings aren't cut off
+
+    ctx.beginPath(); // outline
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 1;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -114,20 +150,69 @@ function drawPockets (ctx) {
     ctx.restore();
 }
 
-// showCue is true only when every ball has stopped, so the cue hides during a shot
-export function drawFrame(ctx, balls, cueBall, cue, showCue) {
+// Faint dashed line marking the head string: on the break, the cue ball goes behind it
+function drawHeadString (ctx) {
+    ctx.save();
+    ctx.setLineDash([4, 8]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(HEAD_STRING_X, 0);
+    ctx.lineTo(HEAD_STRING_X, TABLE_HEIGHT);
+    ctx.stroke();
+    ctx.restore();
+}
+
+// Glowing ring around the cue ball during ball in hand
+function drawBallInHandRing (ctx, pos, radius, color) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius + 5, 0, 2 * Math.PI);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color; // the shadow makes the ring glow
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.restore();
+}
+
+// See-through cue ball with a red ring, shown where the player is trying to place the
+// cue ball when that spot isn't allowed
+function drawGhostCueBall (ctx, pos, radius) {
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.restore();
+    drawBallInHandRing(ctx, pos, radius, '#ff5252');
+}
+
+// showCue is true only when every ball has stopped, so the cue hides during a shot.
+// ballInHand is where the cue ball may be placed ('kitchen', 'table' or null).
+export function drawFrame(ctx, balls, cueBall, cue, showCue, ballInHand = null) {
     ctx.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
 
     drawPockets(ctx);
-    if (showCue) drawAimLine(ctx, cueBall, cue);
+    if (showCue && ballInHand === 'kitchen') drawHeadString(ctx);
+
+    // While the cue ball is being moved, hide the aim line and stick so they don't get in the way
+    const aiming = showCue && !cue.placing;
+    if (aiming) drawAimLine(ctx, cueBall, cue);
 
     for(const ball of balls) {
         if (ball.pocketed) continue; // out of play, so don't draw it on the table
-        drawBall(ball.pos.x, ball.pos.y, ball.color, ctx);
+        drawBall(ctx, ball);
         if (DEBUG_VECTORS) drawVector(ball.pos, ball.vel, 'yellow', ctx, 10)
     }
 
-    if (showCue) {
+    if (showCue && ballInHand !== null) {
+        drawBallInHandRing(ctx, cueBall.pos, cueBall.radius, 'rgba(255, 255, 255, 0.9)');
+        if (cue.ghost) drawGhostCueBall(ctx, cue.ghost, cueBall.radius);
+    }
+
+    if (aiming) {
         drawCueStick(ctx, cueBall, cue);
         drawPowerBar(ctx, cue);
     }
