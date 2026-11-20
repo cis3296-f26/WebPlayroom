@@ -3,12 +3,19 @@ import * as PIXI from 'pixi.js'
 
 //constants
 const GRID_SIZE = 24
+const TIME_ATTACK_DURATION = 60
 
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
   self: 'You hit yourself',
   obstacle: 'You hit an obstacle',
   win: 'You filled the whole board!',
+  time: 'Time is up!',
+}
+
+const GAME_MODES = {
+  classic: { label: 'Classic' },
+  timeAttack: { label: 'Timed' },
 }
 
 const BOARD_SIZES = {
@@ -32,6 +39,8 @@ const Snake = () => {
   const [gameOverReason, setGameOverReason] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
+  const [gameMode, setGameMode] = useState('classic')
+  const [timeLeft, setTimeLeft] = useState(TIME_ATTACK_DURATION)
   const [boardSize, setBoardSize] = useState('medium')
   const [stepSize, setStepSize] = useState('normal')
   const [obstaclesOn, setObstaclesOn] = useState(false)
@@ -126,6 +135,8 @@ const Snake = () => {
       let nextDirection = { x: 1, y: 0 }
       const gridSize = GRID_SIZE
       let timeElapsed = 0
+      let timerElapsed = 0
+      let timeRemaining = TIME_ATTACK_DURATION
       let gameOver = false
 
       const startX = Math.floor(cols / 2) * gridSize
@@ -244,6 +255,24 @@ const Snake = () => {
 
       const gameLoop = (ticker) => {
         if (!gameStartedRef.current || gameOver) return
+
+        // Time Attack countdown
+        if (gameMode === 'timeAttack') {
+          timerElapsed += ticker.deltaMS
+
+          while (timerElapsed >= 1000 && timeRemaining > 0) {
+            timerElapsed -= 1000
+            timeRemaining--
+            setTimeLeft(timeRemaining)
+          }
+
+          if (timeRemaining <= 0) {
+            gameOver = true
+            setGameOverReason('time')
+            return
+          }
+        }
+
         timeElapsed += ticker.deltaMS
 
         if (timeElapsed >= stepMillis) {
@@ -326,12 +355,13 @@ const Snake = () => {
         }
       }
     }
-  }, [gameKey, cols, boardPixelSize, stepMillis, obstaclesOn, obstacleCount]) //Makes sure the game resets when the board size, step size, or obstacles setting changes
+  }, [gameKey, cols, boardPixelSize, stepMillis, obstaclesOn, obstacleCount, gameMode]) //Makes sure the game resets when the board size, step size, or obstacles setting changes
 
   const restart = () => {
     gameStartedRef.current = false
     setGameStarted(false)
     setScore(0)
+    setTimeLeft(TIME_ATTACK_DURATION)
     setGameOverReason(null)
     setGameKey(prev => prev + 1)
   }
@@ -340,6 +370,9 @@ const Snake = () => {
     <div className="snake-game-container">
       <h3>Snake</h3>
       <p className="snake-score">Score: {score}</p>
+      {gameMode === 'timeAttack' && (
+        <p className="snake-timer">Time: {timeLeft}s</p>
+      )}
 
       <div className="snake-board">
         <div ref={containerRef}></div>
@@ -347,6 +380,18 @@ const Snake = () => {
         {!gameStarted && !gameOverReason && (
           <div className="snake-overlay">
             <div className="snake-settings">
+              <p>Game Mode:</p>
+              <div className="snake-options">
+                {Object.entries(GAME_MODES).map(([key, opt]) => (
+                  <button
+                    key={key}
+                    className={`game-button ${gameMode === key ? 'selected' : ''}`}
+                    onClick={() => setGameMode(key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <p>Board Size:</p>
               <div className="snake-options">
                 {Object.entries(BOARD_SIZES).map(([key, opt]) => (
