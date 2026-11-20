@@ -21,7 +21,7 @@ function App() {
 
   return (
     <>
-      <nav className="navbar">
+      <nav className={'navbar' + (pathname === '/' && lastGame === '/pool' ? ' pool-navbar' : '')}>
         <Link to="/" className="logo-link">
           <h1>WebPlayroom</h1>
         </Link>
@@ -29,7 +29,7 @@ function App() {
 
       <main>
         <Routes>
-          <Route path="/" element={<GameHub connect4Theme={lastGame === '/connect4'} />} />
+          <Route path="/" element={<GameHub connect4Theme={lastGame === '/connect4'} poolTheme={lastGame === '/pool'} />} />
           <Route path="/snake" element={<Snake />} />
           <Route path="/pool" element={<Pool />} />
           <Route path="/connect4" element={<Connect4 />} />
