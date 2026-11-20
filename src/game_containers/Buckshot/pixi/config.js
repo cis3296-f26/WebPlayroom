@@ -102,7 +102,62 @@ const grid = ({ x0, y0, dx, dy, cols, rows, scale = 1 }) => {
     return out;
 };
 
+export const LAYOUT = {
+    dealer:        { x: 640, y: 215 },
+    dealerHelmet:  { x: 640, y: 70 },
+    shotgun:       { x: 640, y: 462 },
+    hole:          { x: 640, y: 392 },            // where new items rise out of the table
+    shells:        { x: 640, y: 400, spacing: 56 },
+    revealPopup:   { x: 640, y: 330 },            // magnifying glass / burner phone result
 
+    // 8 slots per side (MAX_ITEMS = 8): index 0 is the first free slot that gets used. Edit freely, or write the arrays by hand.
+    slots: {
+        player: grid({ x0: 445, y0: 568, dx: 130, dy: 96, cols: 4, rows: 2, scale: 1.0 }),
+        dealer: grid({ x0: 445, y0: 335, dx: 130, dy: 52, cols: 4, rows: 2, scale: 0.8 }),
+    },
+
+    // Hands slide in from off-screen. `grip` = the point on the hand sprite (relative to its centre) that holds the item.
+    hands: {
+        player: { rest: { x: 900, y: 900 }, grip: { x: 0, y: -70 }, carryTo: { x: 640, y: 940, scale: 1.9 } },   // carried "towards you", off the bottom
+        dealer: { rest: { x: 640, y: -260 }, grip: { x: 0, y: 70 },  carryTo: { x: 640, y: -300, scale: 0.6 } },  // carried away off the top
+    },
+
+    hud: {
+        player: { x: 28,  y: 668, label: 'YOU' },
+        dealer: { x: 28,  y: 66,  label: 'DEALER' },
+        iconSpacing: 50,
+        turn:   { x: 640, y: 26 },
+        run:    { x: 1252, y: 26 },
+    },
+
+    aim: {
+        dealerHit:  { x: 440, y: 60, w: 400, h: 400 },          // clickable box over the dealer in the aiming pose
+        shootDealer:{ x: 640, y: 40 },
+        shootSelf:  { x: 640, y: 660 },
+        putDown:    { x: 1170, y: 670 },
+    },
+
+    briefcase: { x: 640, y: 470, raisedY: -520 },
+    shackles:  [{ x: 380, y: 585 }, { x: 900, y: 585 }],       // click both to unlock the case
+};
+
+// ---------------------------------------------------------------- timing (ms)
+export const TIMING = {
+    dealerThink: 750,        // pause before each dealer action
+    itemsFade: 260,          // items fading out/in around full-screen clips
+    clipFade: 140,           // video -> still crossfade (hides tiny colour differences between the last video frame and your PNG)
+    handReach: 380,
+    handGrab: 120,
+    handCarry: 480,
+    dealStagger: 130,
+    dealMove: 420,
+    revealHold: 1500,
+    toast: 1600,
+    hpShake: 450,
+    beat: 250,               // generic short pause between events
+    briefcaseLower: 900,
+    briefcaseRaise: 800,
+};
 
 export const FONT = 'Impact, "Arial Black", sans-serif';
 export const FONT_MONO = '"Courier New", monospace';
