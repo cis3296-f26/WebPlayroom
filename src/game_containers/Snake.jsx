@@ -3,17 +3,25 @@ import * as PIXI from 'pixi.js'
 
 //constants
 const GRID_SIZE = 24
+const TIME_ATTACK_DURATION = 60
 
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
   self: 'You hit yourself',
+  obstacle: 'You hit an obstacle',
   win: 'You filled the whole board!',
+  time: 'Time is up!',
+}
+
+const GAME_MODES = {
+  classic: { label: 'Classic' },
+  timed: { label: 'Timed' },
 }
 
 const BOARD_SIZES = {
-  small: {label: 'Small', cols: 10},
-  medium: {label: 'Medium', cols: 14},
-  large: {label: 'Large', cols: 20},
+  small: {label: 'Small', cols: 10, obstacleCount: 3},
+  medium: {label: 'Medium', cols: 14, obstacleCount: 6},
+  large: {label: 'Large', cols: 20, obstacleCount: 9},
 }
 
 const STEP_SIZES = {
@@ -31,12 +39,16 @@ const Snake = () => {
   const [gameOverReason, setGameOverReason] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
+  const [gameMode, setGameMode] = useState('classic')
+  const [timeLeft, setTimeLeft] = useState(TIME_ATTACK_DURATION)
   const [boardSize, setBoardSize] = useState('medium')
   const [stepSize, setStepSize] = useState('normal')
+  const [obstaclesOn, setObstaclesOn] = useState(false)
 
   const cols = BOARD_SIZES[boardSize].cols
   const boardPixelSize = cols * GRID_SIZE
   const stepMillis = STEP_SIZES[stepSize].stepMillis
+  const obstacleCount = BOARD_SIZES[boardSize].obstacleCount
 
   useEffect(() => {
     let app
@@ -106,18 +118,55 @@ const Snake = () => {
         .fill(0x4ade80)
       const foodRender = app.renderer.generateTexture(foodBody)
 
+      const goldenFoodBody = new PIXI.Graphics()
+      goldenFoodBody //golden apple shape
+        .circle(12, 14, 8)
+        .fill(0xfacc15)
+      goldenFoodBody //stem
+        .roundRect(11, 2, 3, 7, 2)
+        .fill(0x854d0e)
+      goldenFoodBody //leaf
+        .ellipse(17, 5, 5, 2.5)
+        .fill(0x4ade80)
+      const goldenFoodRender = app.renderer.generateTexture(goldenFoodBody)
+
+      const obstacleBody = new PIXI.Graphics()
+      obstacleBody //block
+        .roundRect(1, 1, GRID_SIZE - 2, GRID_SIZE - 2, 4)
+        .fill(0x475569)
+      obstacleBody //block stripe
+        .rect(1, 1, GRID_SIZE - 2, 5)
+        .fill({ color: 0xfbbf24, alpha: 0.85 })
+      const obstacleRender = app.renderer.generateTexture(obstacleBody)
+
       if (isDestroyed) return
 
       let snake = []
       let food
+      let foodIsGolden = false
       let direction = { x: 1, y: 0 }
       let nextDirection = { x: 1, y: 0 }
       const gridSize = GRID_SIZE
       let timeElapsed = 0
+      let timerElapsed = 0
+      let timeRemaining = TIME_ATTACK_DURATION
       let gameOver = false
 
       const startX = Math.floor(cols / 2) * gridSize
       const startY = Math.floor(cols / 2) * gridSize
+
+      //Create obstacle sprites and positions
+      const obstaclePositions = []
+      const obstacleSprites = []
+      const obstacleTotal = obstaclesOn ? obstacleCount : 0
+      for (let i = 0; i < obstacleTotal; i++) {
+        const block = new PIXI.Sprite(obstacleRender)
+        block.anchor.set(0.5)
+        block.width = gridSize
+        block.height = gridSize
+        obstacleSprites.push(block)
+        obstaclePositions.push({ x: 0, y: 0 }) // real position set by placeObstacles() below
+      }
 
       for (let i = 0; i < 3; i++) {
         const segment = new PIXI.Sprite(snakeRender)
@@ -144,26 +193,68 @@ const Snake = () => {
         let foodY
         let occupied
 
-        // Ensure food doesn't spawn on the snake
+        // Ensure food doesn't spawn on the snake or on an obstacle
         do {
           foodX = Math.floor(Math.random() * cols) * gridSize
           foodY = Math.floor(Math.random() * cols) * gridSize
-          occupied = snake.some(segment =>
-            Math.floor((segment.x - gridSize / 2) / gridSize) === foodX / gridSize &&
-            Math.floor((segment.y - gridSize / 2) / gridSize) === foodY / gridSize
-          )
+          occupied =
+            snake.some(segment =>
+              Math.floor((segment.x - gridSize / 2) / gridSize) === foodX / gridSize &&
+              Math.floor((segment.y - gridSize / 2) / gridSize) === foodY / gridSize
+            ) ||
+            obstaclePositions.some((o) => o.x === foodX && o.y === foodY)
         } while (occupied)
 
         food.x = foodX + gridSize / 2
         food.y = foodY + gridSize / 2
+        foodIsGolden = Math.random() < 0.2
+        food.texture = foodIsGolden ? goldenFoodRender : foodRender
+      }
+
+      // Moves every obstacle to a new random cell, avoiding the snake's body and the food. 
+      const placeObstacles = () => {
+        const usedCells = new Set()
+        snake.forEach((segment) => {
+          const gx = Math.round((segment.x - gridSize / 2) / gridSize)
+          const gy = Math.round((segment.y - gridSize / 2) / gridSize)
+          usedCells.add(`${gx},${gy}`)
+        })
+        const foodGX = Math.round((food.x - gridSize / 2) / gridSize)
+        const foodGY = Math.round((food.y - gridSize / 2) / gridSize)
+        usedCells.add(`${foodGX},${foodGY}`)
+
+        obstaclePositions.forEach((pos, i) => {
+          let gx
+          let gy
+          let attempts = 0
+          do {
+            gx = Math.floor(Math.random() * cols)
+            gy = Math.floor(Math.random() * cols)
+            attempts++
+          } while (usedCells.has(`${gx},${gy}`) && attempts < 200)
+
+          usedCells.add(`${gx},${gy}`)
+          pos.x = gx * gridSize
+          pos.y = gy * gridSize
+          obstacleSprites[i].x = pos.x + gridSize / 2
+          obstacleSprites[i].y = pos.y + gridSize / 2
+        })
       }
 
       placeFood()
       app.stage.addChild(food)
 
+      obstacleSprites.forEach((block) => app.stage.addChild(block))
+      placeObstacles()
+
       const handleInput = (e) => {
         if (e.code === "Space") {
           e.preventDefault()
+          if (e.repeat) return
+          if (gameOver) {
+            restart()
+            return
+          }
           if (!gameStartedRef.current) {
             gameStartedRef.current = true
             setGameStarted(true)
@@ -184,6 +275,24 @@ const Snake = () => {
 
       const gameLoop = (ticker) => {
         if (!gameStartedRef.current || gameOver) return
+
+        // Time Attack countdown
+        if (gameMode === 'timed') {
+          timerElapsed += ticker.deltaMS
+
+          while (timerElapsed >= 1000 && timeRemaining > 0) {
+            timerElapsed -= 1000
+            timeRemaining--
+            setTimeLeft(timeRemaining)
+          }
+
+          if (timeRemaining <= 0) {
+            gameOver = true
+            setGameOverReason('time')
+            return
+          }
+        }
+
         timeElapsed += ticker.deltaMS
 
         if (timeElapsed >= stepMillis) {
@@ -199,7 +308,14 @@ const Snake = () => {
             return
           }
 
+          if (obstaclePositions.some((o) => o.x === headX && o.y === headY)) {
+            gameOver = true
+            setGameOverReason('obstacle')
+            return
+          }
+
           const eating = headX === food.x - gridSize / 2 && headY === food.y - gridSize / 2
+          const eatingGoldenFood = eating && foodIsGolden
 
           for (let i = 0; i < snake.length - (eating ? 0 : 1); i++) {
             const segmentX = snake[i].x - gridSize / 2
@@ -232,7 +348,7 @@ const Snake = () => {
             app.stage.addChild(tail)
 
             //Check if snake has filled the whole board
-            if(snake.length == cols * cols) {
+            if(snake.length == cols * cols - obstacleTotal) {
               gameOver = true
               setGameOverReason('win')
               return
@@ -240,7 +356,11 @@ const Snake = () => {
 
             placeFood()
 
-            setScore(prevScore => prevScore + 1)
+            setScore(prevScore => prevScore + (eatingGoldenFood ? 2 : 1))
+            if(eatingGoldenFood && gameMode === 'timed') {
+              timeRemaining += 3
+              setTimeLeft(timeRemaining)
+            }
           }
         }
       }
@@ -260,12 +380,13 @@ const Snake = () => {
         }
       }
     }
-  }, [gameKey, cols, boardPixelSize, stepMillis]) //Makes sure the game resets when the board size or step size changes
+  }, [gameKey, cols, boardPixelSize, stepMillis, obstaclesOn, obstacleCount, gameMode]) //Makes sure the game resets when the board size, step size, or obstacles setting changes
 
   const restart = () => {
     gameStartedRef.current = false
     setGameStarted(false)
     setScore(0)
+    setTimeLeft(TIME_ATTACK_DURATION)
     setGameOverReason(null)
     setGameKey(prev => prev + 1)
   }
@@ -274,6 +395,9 @@ const Snake = () => {
     <div className="snake-game-container">
       <h3>Snake</h3>
       <p className="snake-score">Score: {score}</p>
+      {gameMode === 'timed' && (
+        <p className="snake-timer">Time: {timeLeft}s</p>
+      )}
 
       <div className="snake-board">
         <div ref={containerRef}></div>
@@ -281,6 +405,18 @@ const Snake = () => {
         {!gameStarted && !gameOverReason && (
           <div className="snake-overlay">
             <div className="snake-settings">
+              <p>Game Mode:</p>
+              <div className="snake-options">
+                {Object.entries(GAME_MODES).map(([key, opt]) => (
+                  <button
+                    key={key}
+                    className={`game-button ${gameMode === key ? 'selected' : ''}`}
+                    onClick={() => setGameMode(key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <p>Board Size:</p>
               <div className="snake-options">
                 {Object.entries(BOARD_SIZES).map(([key, opt]) => (
@@ -306,6 +442,22 @@ const Snake = () => {
                   </button>
                 ))}
               </div>
+
+              <p>Obstacles:</p>
+              <div className="snake-options">
+                <button
+                  className={`game-button ${!obstaclesOn ? 'selected' : ''}`}
+                  onClick={() => setObstaclesOn(false)}
+                >
+                  Off
+                </button>
+                <button
+                  className={`game-button ${obstaclesOn ? 'selected' : ''}`}
+                  onClick={() => setObstaclesOn(true)}
+                >
+                  On
+                </button>
+              </div>
             </div>
           <p>Press Space to Start</p>
         </div>
@@ -318,6 +470,7 @@ const Snake = () => {
             <button className="game-button" onClick={restart}>
               Play again
             </button>
+            <p>Press Space to Restart</p>
           </div>
         )}
       </div>
