@@ -7,14 +7,15 @@ import { randomItem } from './Items/Items.js';
 const ITEMS_PER_RELOAD = 2;
 
 export class BuckshotGame {
-    constructor(log = new GameLog()) {
+    constructor(log = new GameLog(), { round = 1 } = {}) {
         this.log = log;
         this.player = new Player();
         this.dealer = new Dealer();
         this.shotgun = new Shotgun(this.log);
         this.turn = 'player';
-        this.round = 1;
+        this.round = round;
         this.winner = null;
+        this.dealer.watch(this.log);   // lets the dealer remember what its own magnifying glass showed
     }
 
     start() {
@@ -29,12 +30,15 @@ export class BuckshotGame {
         if (this.winner) return { valid: false, reason: 'The game is over' };
         if (this.turn !== actor.id) return { valid: false, reason: 'It is not your turn' };
 
+        let result;
         switch (action?.type) {
-            case 'USE_ITEM': return this.useItem(actor, action.index, { targetIndex: action.targetIndex });
-            case 'SHOOT': return this.shoot(actor, action.target);
-            default: return { valid: false, reason: `Unknown action: ${action?.type}` };
+            case 'USE_ITEM': result = this.useItem(actor, action.index, { targetIndex: action.targetIndex }); break;
+            case 'SHOOT': result = this.shoot(actor, action.target); break;
+            default: result = { valid: false, reason: `Unknown action: ${action?.type}` };
         }
-
+        // useItem answered with {valid} and shoot with {ok}; callers can now check either one.
+        const ok = result.ok ?? result.valid ?? false;
+        return { ...result, ok, valid: ok };
     }
 
     useItem(user, index, args = {}) {
@@ -43,11 +47,11 @@ export class BuckshotGame {
 
         const reason = item.blockedReason(this, user, args);
         if (reason) {
-            this.log.emit('ACTION_REJECTED', { by: user.id, item: item.id, itemName: item.name, reason });
+            this.log.emit('ACTION_REJECTED', { by: user.id, item: item.id, itemName: item.name, uid: item.uid, reason });
             return { valid: false, reason };
         }
 
-        this.log.emit('ITEM_USED', { by: user.id, item: item.id, itemName: item.name });
+        this.log.emit('ITEM_USED', { by: user.id, item: item.id, itemName: item.name, uid: item.uid });
         item.useItem(this, user, args);
         user.removeItem(item);
         return { valid: true };
@@ -70,12 +74,21 @@ export class BuckshotGame {
         return { ok: true };
     }
 
-    dealerTurn() {
+    // Performs ONE dealer action (use an item, or take the shot). Call it again while it is still the dealer's turn.
+    // The visual layer calls this one step at a time so each action can be animated before the next.
+    dealerAct() {
         if (this.winner || this.turn !== 'dealer') return false;
-        const choice = this.dealer.chooseTarget(this.shotgun);
-        const target = choice === 'self' ? 'dealer' : 'player';
-        return this.determineAction('dealer', { type: 'SHOOT', target }).ok;
+
+        const action = this.dealer.chooseAction(this);
+        let result = this.determineAction('dealer', action);
+        if (!result.ok) {   // the AI picked something the rules reject; fall back to a shot so the game can never stall
+            const target = this.dealer.chooseTarget(this.shotgun) === 'self' ? 'dealer' : 'player';
+            result = this.determineAction('dealer', { type: 'SHOOT', target });
+        }
+        return result.ok;
     }
+
+    dealerTurn() { return this.dealerAct(); }   // kept so the old log UI keeps working
 
     afterShot(shooter, target, shell) {
         if (target.isDead) {
