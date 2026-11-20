@@ -107,7 +107,7 @@ export class Adrenaline extends Item {
         const opponent = game.opponentOf(user);
         const stolen = opponent.inventory[targetIndex];
         opponent.removeItem(stolen);
-        game.log.emit('ITEM_STOLEN', { by: user.id, from: opponent.id, item: stolen.id, itemName: stolen.name });
+        game.log.emit('ITEM_STOLEN', { by: user.id, from: opponent.id, item: stolen.id, itemName: stolen.name, uid: stolen.uid });
         stolen.useItem(game, user, {}); //immediately used
     }
 }
@@ -130,7 +130,7 @@ export class Duplicator extends Item {
         const copy = new source.constructor();
 
         user.inventory.push(copy);
-        game.log.emit('ITEM_DUPLICATED', { by: user.id, item: source.id, itemName: source.name });
+        game.log.emit('ITEM_DUPLICATED', { by: user.id, item: source.id, itemName: source.name, copy: copy.describe() });
     }
 }
 
