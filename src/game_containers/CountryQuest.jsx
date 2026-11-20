@@ -3,7 +3,7 @@ import { QUESTIONS } from './countryQuestions'
 import './CountryQuest.css'
 
 const DIFFICULTY = {
-  easy:   { label: 'Easy',   icon: '🌱', color: '#2e9e5b', hint: true,  time: 0,  note: '\nHints available' },
+  easy:   { label: 'Easy',   icon: '🌱', color: '#2e9e5b', hint: true,  time: 0,  note: 'Hints available' },
   medium: { label: 'Medium', icon: '⏱️', color: '#d9780f', hint: false, time: 40, note: '40 seconds per question' },
   hard:   { label: 'Hard',   icon: '⚡', color: '#d64545', hint: false, time: 20, note: '20 seconds per question' },
 }
@@ -11,14 +11,14 @@ const DIFFICULTY = {
 const TIMEOUT = '__timeout__'
 
 const ROUND_SIZE = 5
-const MAX_POINTS = 15
-const STREAK_STEP = 0.1
-const MAX_STREAK_STEPS = 4
+const MAX_POINTS = 15       // base points per question (before the time penalty)
+const STREAK_STEP = 0.1     // 10% per consecutive correct answer
+const MAX_STREAK_STEPS = 4  // caps at +40%
 const PERFECT_BONUS = 10
 const MAX_TOTAL =
   MAX_POINTS * (ROUND_SIZE + (STREAK_STEP * (ROUND_SIZE - 1) * ROUND_SIZE) / 2) + PERFECT_BONUS
 
-const fmt = (n) => Number(n.toFixed(1))
+const fmt = (n) => Number(n.toFixed(1)) // tidy decimals for display
 
 const pointsFor = (level, timeLeft) => {
   const limit = DIFFICULTY[level].time
@@ -72,7 +72,7 @@ function CountryQuest() {
 
   const reset = () => setDifficulty(null)
 
-  // Countdown
+  // countdown
   useEffect(() => {
     if (!difficulty || finished || picked !== null) return
     if (!DIFFICULTY[difficulty].time) return
@@ -90,7 +90,7 @@ function CountryQuest() {
     setPicked(option)
     if (option === round[index].answer) {
       const base = pointsFor(difficulty, timeLeft)
-      const bonus = base * STREAK_STEP * Math.min(streak, MAX_STREAK_STEPS)
+      const bonus = base * STREAK_STEP * Math.min(streak, MAX_STREAK_STEPS) // 2nd correct in a row onward
       setScore((s) => s + base + bonus)
       setStreakTotal((t) => t + bonus)
       setCorrectCount((c) => c + 1)
