@@ -15,11 +15,11 @@ const GAME_OVER_MESSAGES = {
 
 const GAME_MODES = {
   classic: { label: 'Classic' },
-  timeAttack: { label: 'Timed' },
+  timed: { label: 'Timed' },
 }
 
 const BOARD_SIZES = {
-  small: {label: 'Small', cols: 10, obstacleCount: 4},
+  small: {label: 'Small', cols: 10, obstacleCount: 3},
   medium: {label: 'Medium', cols: 14, obstacleCount: 6},
   large: {label: 'Large', cols: 20, obstacleCount: 9},
 }
@@ -118,6 +118,18 @@ const Snake = () => {
         .fill(0x4ade80)
       const foodRender = app.renderer.generateTexture(foodBody)
 
+      const goldenFoodBody = new PIXI.Graphics()
+      goldenFoodBody //golden apple shape
+        .circle(12, 14, 8)
+        .fill(0xfacc15)
+      goldenFoodBody //stem
+        .roundRect(11, 2, 3, 7, 2)
+        .fill(0x854d0e)
+      goldenFoodBody //leaf
+        .ellipse(17, 5, 5, 2.5)
+        .fill(0x4ade80)
+      const goldenFoodRender = app.renderer.generateTexture(goldenFoodBody)
+
       const obstacleBody = new PIXI.Graphics()
       obstacleBody //block
         .roundRect(1, 1, GRID_SIZE - 2, GRID_SIZE - 2, 4)
@@ -131,6 +143,7 @@ const Snake = () => {
 
       let snake = []
       let food
+      let foodIsGolden = false
       let direction = { x: 1, y: 0 }
       let nextDirection = { x: 1, y: 0 }
       const gridSize = GRID_SIZE
@@ -194,6 +207,8 @@ const Snake = () => {
 
         food.x = foodX + gridSize / 2
         food.y = foodY + gridSize / 2
+        foodIsGolden = Math.random() < 0.2
+        food.texture = foodIsGolden ? goldenFoodRender : foodRender
       }
 
       // Moves every obstacle to a new random cell, avoiding the snake's body and the food. 
@@ -235,6 +250,11 @@ const Snake = () => {
       const handleInput = (e) => {
         if (e.code === "Space") {
           e.preventDefault()
+          if (e.repeat) return
+          if (gameOver) {
+            restart()
+            return
+          }
           if (!gameStartedRef.current) {
             gameStartedRef.current = true
             setGameStarted(true)
@@ -257,7 +277,7 @@ const Snake = () => {
         if (!gameStartedRef.current || gameOver) return
 
         // Time Attack countdown
-        if (gameMode === 'timeAttack') {
+        if (gameMode === 'timed') {
           timerElapsed += ticker.deltaMS
 
           while (timerElapsed >= 1000 && timeRemaining > 0) {
@@ -295,6 +315,7 @@ const Snake = () => {
           }
 
           const eating = headX === food.x - gridSize / 2 && headY === food.y - gridSize / 2
+          const eatingGoldenFood = eating && foodIsGolden
 
           for (let i = 0; i < snake.length - (eating ? 0 : 1); i++) {
             const segmentX = snake[i].x - gridSize / 2
@@ -327,7 +348,7 @@ const Snake = () => {
             app.stage.addChild(tail)
 
             //Check if snake has filled the whole board
-            if(snake.length == cols * cols) {
+            if(snake.length == cols * cols - obstacleTotal) {
               gameOver = true
               setGameOverReason('win')
               return
@@ -335,7 +356,11 @@ const Snake = () => {
 
             placeFood()
 
-            setScore(prevScore => prevScore + 1)
+            setScore(prevScore => prevScore + (eatingGoldenFood ? 2 : 1))
+            if(eatingGoldenFood && gameMode === 'timed') {
+              timeRemaining += 3
+              setTimeLeft(timeRemaining)
+            }
           }
         }
       }
@@ -370,7 +395,7 @@ const Snake = () => {
     <div className="snake-game-container">
       <h3>Snake</h3>
       <p className="snake-score">Score: {score}</p>
-      {gameMode === 'timeAttack' && (
+      {gameMode === 'timed' && (
         <p className="snake-timer">Time: {timeLeft}s</p>
       )}
 
@@ -445,6 +470,7 @@ const Snake = () => {
             <button className="game-button" onClick={restart}>
               Play again
             </button>
+            <p>Press Space to Restart</p>
           </div>
         )}
       </div>
