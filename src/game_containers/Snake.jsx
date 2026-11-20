@@ -7,13 +7,14 @@ const GRID_SIZE = 24
 const GAME_OVER_MESSAGES = {
   wall: 'You hit a wall',
   self: 'You hit yourself',
+  obstacle: 'You hit an obstacle',
   win: 'You filled the whole board!',
 }
 
 const BOARD_SIZES = {
-  small: {label: 'Small', cols: 10},
-  medium: {label: 'Medium', cols: 14},
-  large: {label: 'Large', cols: 20},
+  small: {label: 'Small', cols: 10, obstacleCount: 4},
+  medium: {label: 'Medium', cols: 14, obstacleCount: 6},
+  large: {label: 'Large', cols: 20, obstacleCount: 9},
 }
 
 const STEP_SIZES = {
@@ -33,10 +34,12 @@ const Snake = () => {
   const [gameStarted, setGameStarted] = useState(false)
   const [boardSize, setBoardSize] = useState('medium')
   const [stepSize, setStepSize] = useState('normal')
+  const [obstaclesOn, setObstaclesOn] = useState(false)
 
   const cols = BOARD_SIZES[boardSize].cols
   const boardPixelSize = cols * GRID_SIZE
   const stepMillis = STEP_SIZES[stepSize].stepMillis
+  const obstacleCount = BOARD_SIZES[boardSize].obstacleCount
 
   useEffect(() => {
     let app
@@ -106,6 +109,15 @@ const Snake = () => {
         .fill(0x4ade80)
       const foodRender = app.renderer.generateTexture(foodBody)
 
+      const obstacleBody = new PIXI.Graphics()
+      obstacleBody //block
+        .roundRect(1, 1, GRID_SIZE - 2, GRID_SIZE - 2, 4)
+        .fill(0x475569)
+      obstacleBody //block stripe
+        .rect(1, 1, GRID_SIZE - 2, 5)
+        .fill({ color: 0xfbbf24, alpha: 0.85 })
+      const obstacleRender = app.renderer.generateTexture(obstacleBody)
+
       if (isDestroyed) return
 
       let snake = []
@@ -118,6 +130,19 @@ const Snake = () => {
 
       const startX = Math.floor(cols / 2) * gridSize
       const startY = Math.floor(cols / 2) * gridSize
+
+      //Create obstacle sprites and positions
+      const obstaclePositions = []
+      const obstacleSprites = []
+      const obstacleTotal = obstaclesOn ? obstacleCount : 0
+      for (let i = 0; i < obstacleTotal; i++) {
+        const block = new PIXI.Sprite(obstacleRender)
+        block.anchor.set(0.5)
+        block.width = gridSize
+        block.height = gridSize
+        obstacleSprites.push(block)
+        obstaclePositions.push({ x: 0, y: 0 }) // real position set by placeObstacles() below
+      }
 
       for (let i = 0; i < 3; i++) {
         const segment = new PIXI.Sprite(snakeRender)
@@ -144,22 +169,57 @@ const Snake = () => {
         let foodY
         let occupied
 
-        // Ensure food doesn't spawn on the snake
+        // Ensure food doesn't spawn on the snake or on an obstacle
         do {
           foodX = Math.floor(Math.random() * cols) * gridSize
           foodY = Math.floor(Math.random() * cols) * gridSize
-          occupied = snake.some(segment =>
-            Math.floor((segment.x - gridSize / 2) / gridSize) === foodX / gridSize &&
-            Math.floor((segment.y - gridSize / 2) / gridSize) === foodY / gridSize
-          )
+          occupied =
+            snake.some(segment =>
+              Math.floor((segment.x - gridSize / 2) / gridSize) === foodX / gridSize &&
+              Math.floor((segment.y - gridSize / 2) / gridSize) === foodY / gridSize
+            ) ||
+            obstaclePositions.some((o) => o.x === foodX && o.y === foodY)
         } while (occupied)
 
         food.x = foodX + gridSize / 2
         food.y = foodY + gridSize / 2
       }
 
+      // Moves every obstacle to a new random cell, avoiding the snake's body and the food. 
+      const placeObstacles = () => {
+        const usedCells = new Set()
+        snake.forEach((segment) => {
+          const gx = Math.round((segment.x - gridSize / 2) / gridSize)
+          const gy = Math.round((segment.y - gridSize / 2) / gridSize)
+          usedCells.add(`${gx},${gy}`)
+        })
+        const foodGX = Math.round((food.x - gridSize / 2) / gridSize)
+        const foodGY = Math.round((food.y - gridSize / 2) / gridSize)
+        usedCells.add(`${foodGX},${foodGY}`)
+
+        obstaclePositions.forEach((pos, i) => {
+          let gx
+          let gy
+          let attempts = 0
+          do {
+            gx = Math.floor(Math.random() * cols)
+            gy = Math.floor(Math.random() * cols)
+            attempts++
+          } while (usedCells.has(`${gx},${gy}`) && attempts < 200)
+
+          usedCells.add(`${gx},${gy}`)
+          pos.x = gx * gridSize
+          pos.y = gy * gridSize
+          obstacleSprites[i].x = pos.x + gridSize / 2
+          obstacleSprites[i].y = pos.y + gridSize / 2
+        })
+      }
+
       placeFood()
       app.stage.addChild(food)
+
+      obstacleSprites.forEach((block) => app.stage.addChild(block))
+      placeObstacles()
 
       const handleInput = (e) => {
         if (e.code === "Space") {
@@ -196,6 +256,12 @@ const Snake = () => {
           if (headX < 0 || headX >= boardPixelSize || headY < 0 || headY >= boardPixelSize) {
             gameOver = true
             setGameOverReason('wall')
+            return
+          }
+
+          if (obstaclePositions.some((o) => o.x === headX && o.y === headY)) {
+            gameOver = true
+            setGameOverReason('obstacle')
             return
           }
 
@@ -260,7 +326,7 @@ const Snake = () => {
         }
       }
     }
-  }, [gameKey, cols, boardPixelSize, stepMillis]) //Makes sure the game resets when the board size or step size changes
+  }, [gameKey, cols, boardPixelSize, stepMillis, obstaclesOn, obstacleCount]) //Makes sure the game resets when the board size, step size, or obstacles setting changes
 
   const restart = () => {
     gameStartedRef.current = false
@@ -305,6 +371,22 @@ const Snake = () => {
                     {opt.label}
                   </button>
                 ))}
+              </div>
+
+              <p>Obstacles:</p>
+              <div className="snake-options">
+                <button
+                  className={`game-button ${!obstaclesOn ? 'selected' : ''}`}
+                  onClick={() => setObstaclesOn(false)}
+                >
+                  Off
+                </button>
+                <button
+                  className={`game-button ${obstaclesOn ? 'selected' : ''}`}
+                  onClick={() => setObstaclesOn(true)}
+                >
+                  On
+                </button>
               </div>
             </div>
           <p>Press Space to Start</p>
